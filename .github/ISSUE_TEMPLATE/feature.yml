@@ -1,0 +1,30 @@
+name: Feature
+description: Proponha uma melhoria de produto.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema
+      description: Qual problema real precisa ser resolvido?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Resultado esperado
+    validations:
+      required: true
+  - type: textarea
+    id: mobile
+    attributes:
+      label: Impacto mobile-first
+  - type: textarea
+    id: privacy
+    attributes:
+      label: Dados, privacidade e integrações
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Fora de escopo

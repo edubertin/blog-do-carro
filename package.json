@@ -1,0 +1,37 @@
+{
+  "name": "blog-do-carro",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "npm@11.12.1",
+  "workspaces": [
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace @blog-do-carro/site",
+    "build": "npm run build --workspace @blog-do-carro/site",
+    "start": "npm run start --workspace @blog-do-carro/site",
+    "lint": "npm run lint --workspace @blog-do-carro/site",
+    "typecheck": "npm run typecheck --workspace @blog-do-carro/site",
+    "test": "npm run test:rendered --workspace @blog-do-carro/site",
+    "qa": "npm run qa --workspace @blog-do-carro/site",
+    "check:deps": "npm ls --depth=0 && npm audit --omit=dev --audit-level=high",
+    "ci": "npm run qa && npm run check:deps"
+  },
+  "devDependencies": {
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-server-dom-webpack": "19.2.8"
+  },
+  "optionalDependencies": {
+    "@emnapi/runtime": "1.11.3",
+    "@img/sharp-wasm32": "0.35.2"
+  },
+  "overrides": {
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-server-dom-webpack": "19.2.8"
+  }
+}

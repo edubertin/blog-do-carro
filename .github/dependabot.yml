@@ -1,0 +1,36 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    groups:
+      site-runtime:
+        patterns:
+          - react
+          - react-dom
+          - react-server-dom-webpack
+          - vinext
+          - vite
+          - "@cloudflare/*"
+          - "@vitejs/*"
+          - wrangler
+        update-types:
+          - minor
+          - patch
+      lint-tooling:
+        patterns:
+          - eslint
+          - "@eslint/*"
+          - "eslint-*"
+          - typescript-eslint
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 3
