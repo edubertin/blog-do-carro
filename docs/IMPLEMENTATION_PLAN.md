@@ -15,6 +15,17 @@ Construir um portal automotivo brasileiro com experiência de aplicativo, priori
 - Motion discreto, com respeito a `prefers-reduced-motion`.
 - Imagens editoriais responsivas pela API compatível `next/image`, atendida pelo worker Vinext.
 - Produto “Chaveiro Presente” com fluxo de compra demonstrativo, sem cobrança, persistência ou envio.
+- Domínio canônico definitivo `https://blogdocarro.com`.
+- Mercado Pago como único destino futuro de pagamento, exclusivamente para Pix e ainda bloqueado.
+- Categorias sem conteúdo publicado permanecem vazias; o produto não gera artigos com IA para preenchê-las.
+
+### Registro de decisões
+
+- `docs/adr/0001-editorial-source-pending.md`: CMS ou D1 permanece pendente.
+- `docs/adr/0002-admin-identity-provisioning.md`: identidade administrativa gerenciada e owners provisionados fora do Git.
+- `docs/adr/0003-canonical-domain.md`: `blogdocarro.com` é a origem canônica.
+- `docs/adr/0004-mercado-pago-pix-only.md`: Mercado Pago somente Pix, sem ativação real.
+- `docs/adr/0005-empty-categories-no-ai-content.md`: categorias vazias não recebem conteúdo gerado.
 
 ## Arquitetura alvo
 
@@ -27,12 +38,12 @@ apps/site (Vinext + Vite + worker Cloudflare)
 
 Sites
 ├── publicação do worker e assets
-├── D1 futuro: conteúdo, comércio e métricas agregadas
+├── D1 futuro: comércio, métricas e editorial somente se escolhido
 ├── R2 futuro: mídia própria
 └── conectores futuros: pagamentos, frete, e-mail e observabilidade
 ```
 
-O conteúdo editorial e os dados transacionais devem permanecer separados. Artigos, autores, categorias, menus e páginas vivem no CMS; usuários, favoritos, anúncios, pedidos e eventos de pagamento vivem no banco da aplicação.
+O conteúdo editorial e os dados transacionais devem permanecer separados. A fonte de verdade de artigos, autores, categorias, menus e páginas continua pendente entre CMS e D1; usuários, favoritos, anúncios, pedidos e eventos de pagamento vivem no banco da aplicação. O portal público sempre consome uma projeção somente de conteúdo publicado.
 
 ### Padrão de publicação no Sites
 
@@ -56,7 +67,9 @@ Todo artigo deve exigir os campos:
 8. artigos relacionados;
 9. status `rascunho`, `revisão`, `agendado` ou `publicado`.
 
-Configurações da página inicial, menu e newsletter devem ser documentos próprios no CMS, editáveis sem alteração de código.
+Configurações da página inicial, menu e newsletter devem ser documentos próprios na fonte editorial escolhida, editáveis sem alteração de código.
+
+Categorias sem artigos publicados exibem um estado vazio honesto. Nenhum artigo será gerado ou publicado por IA apenas para preencher uma categoria.
 
 ## Fases
 
@@ -72,7 +85,8 @@ Configurações da página inicial, menu e newsletter devem ser documentos próp
 
 ### Fase 1 — fundação editorial
 
-- Ativar D1 e migrar o conteúdo de demonstração para o modelo editorial.
+- Decidir por ADR a fonte editorial entre CMS e D1 antes de criar schema ou CRUD real.
+- Ativar D1 somente para os domínios aprovados e aplicar migrations versionadas.
 - Criar painel com autenticação, sessão segura e perfis de editor e administrador.
 - Implementar preview, rascunho, agendamento, publicação e histórico de alterações.
 - Configurar sitemap, feed, redirects e revalidação automática.
@@ -90,7 +104,7 @@ Configurações da página inicial, menu e newsletter devem ser documentos próp
 - Catálogo, estoque e variações do Chaveiro Presente.
 - Carrinho e checkout no servidor seguindo o padrão já validado no Plimcor.
 - Acesso passwordless por magic link e área **Meus pedidos**, conforme `docs/specs/customer-order-portal.md`.
-- Adaptadores isolados para Login Mercado Livre, PayPix e Meu Envio após homologação.
+- Adaptadores isolados para Login Mercado Livre, Mercado Pago exclusivamente para Pix e Meu Envio após homologação.
 - Pagamento com idempotência, webhook assinado e reconciliação.
 - Política de entrega, trocas, privacidade e suporte.
 
@@ -123,13 +137,15 @@ O painel será um conjunto protegido dentro do mesmo aplicativo, sem um segundo 
 | `/admin/menu` | editar navegação e categorias exibidas |
 | `/admin/loja/produtos` | criar, editar, ativar e remover produtos do catálogo |
 | `/admin/loja/configuracoes` | identidade da loja, políticas e parâmetros comerciais |
+| `/admin/pedidos` | fila operacional, estados, eventos e exceções dos pedidos |
 | `/admin/integracoes` | status e configuração dos conectores permitidos |
+| `/admin/seguranca` | papéis, sessões, permissões, flags e trilha de auditoria |
 
 O editor salva automaticamente, alerta sobre alterações não publicadas e separa claramente `Salvar rascunho`, `Enviar para revisão`, `Agendar` e `Publicar`. A publicação exige validação de slug, SEO, imagem, categoria, vídeo, opinião e FAQ.
 
 ### Modelo de dados inicial no D1
 
-- Editorial: `articles`, `article_revisions`, `authors`, `categories`, `article_categories`, `faqs`, `menus` e `home_sections`.
+- Editorial, apenas se D1 for escolhido como fonte: `articles`, `article_revisions`, `authors`, `categories`, `article_categories`, `faqs`, `menus` e `home_sections`.
 - Vídeo: `youtube_videos`, vinculando ID, canal, metadados de origem, pôster e artigo.
 - Loja: `products`, `product_variants`, `inventory_movements` e `store_settings`.
 - Administração: `admin_users`, `roles`, `sessions` e `audit_log`.
@@ -145,7 +161,11 @@ O editor salva automaticamente, alerta sobre alterações não publicadas e sepa
 
 ### Conectores
 
-Cada integração terá um adaptador isolado, configuração por variável de ambiente, estado `desconectado`, `teste` ou `ativo`, teste de saúde e log sanitizado. Mercado Livre, PayPix e Meu Envio continuarão `desconectados` até homologação. Nenhuma chave ou token será salvo em artigo, produto, D1 ou código.
+Cada integração terá um adaptador isolado, configuração por variável de ambiente, estados separados de modo, configuração, saúde e ativação, teste de saúde e log sanitizado. Mercado Livre, Mercado Pago Pix e Meu Envio continuarão `desconectados` até homologação. O painel mostra somente nomes e estado dos secrets; valores são inseridos e rotacionados exclusivamente pelo mecanismo de secrets do Sites. Nenhuma chave ou token será recebida pelo painel ou salva em artigo, produto, D1 ou código.
+
+As duas identidades iniciais de owner já fornecidas fora do repositório serão provisionadas pelo provedor de identidade e/ou secrets do Sites. E-mails ou outros identificadores pessoais não fazem parte da configuração versionada.
+
+A especificação completa do painel, RBAC, audit log, conectores e limites do mock está em `docs/specs/admin-control-plane.md`.
 
 ## Estado atual
 
@@ -153,7 +173,8 @@ Cada integração terá um adaptador isolado, configuração por variável de am
 - Build empacota o worker, assets e `.openai/hosting.json`.
 - D1 e R2 permanecem `null`; não existe efeito externo de pagamento ou envio.
 - Carrossel, conteúdo editorial, loja e checkout demonstrativo estão prontos para validação visual.
-- Próximo corte recomendado: autenticação do admin, schema editorial D1, migrações e CRUD de artigos antes de analytics ou comércio real.
+- O mock administrativo local cobre todas as rotas da matriz, sem persistência, autenticação, secrets ou chamadas externas.
+- Próximo corte recomendado: validar o mock, selecionar a fonte editorial e concluir o ADR técnico do provedor de identidade antes de D1 editorial, migrações ou CRUD real.
 
 ## Spike — vídeo novo para artigo e carrossel
 
@@ -178,13 +199,13 @@ Cada integração terá um adaptador isolado, configuração por variável de am
 - Usar a rota interna `/loja` como catálogo e `/loja/chaveiro-presente` como página do produto.
 - Percorrer produto, carrinho, identificação, entrega, Pix, revisão e confirmação em modo demonstrativo.
 - Persistir somente produto e quantidade; dados pessoais permanecem na memória da página.
-- Manter Login Mercado Livre, PayPix, Meu Envio, cobrança e pedido persistente desligados.
+- Manter Login Mercado Livre, Mercado Pago, Meu Envio, cobrança e pedido persistente desligados.
 
 ### Venda futura
 
 - Ativar pedido e pagamento somente depois de validar fornecedor, amostra física, lote mínimo, preço, embalagem, frete, troca e política de privacidade.
 - Reaproveitar o padrão transacional do Plimcor, mantendo catálogo e checkout separados do conteúdo editorial.
-- Mercado Pago Checkout Bricks é o candidato inicial para Pix e cartão dentro do site; pedidos, estoque e webhooks continuam no servidor da aplicação.
+- Mercado Pago é o destino aprovado exclusivamente para Pix; cartão e outros meios ficam fora do primeiro corte. Credenciais, criação de pagamentos e webhooks continuam bloqueados até homologação, conforme `docs/adr/0004-mercado-pago-pix-only.md`.
 - Evolução sugerida: lista de interesse → pré-venda limitada → primeiro drop → catálogo recorrente.
 
 ## Critérios de aceite do MVP editorial
@@ -199,6 +220,7 @@ Cada integração terá um adaptador isolado, configuração por variável de am
 ## Riscos e limites
 
 - A história do “Presente” é tratada como repertório interno da comunidade; o texto final deve ser validado com o proprietário da marca.
+- As datas de publicação dos quatro vídeos ainda precisam ser confirmadas na fonte oficial; até lá, o schema omite `datePublished` em vez de inventar uma data.
 - Checkout exige regras comerciais, frete, estoque, política de troca e conta de pagamento antes de implementação.
 - Tabela FIPE e calculadora dependem da escolha de provedores e dos termos de uso de cada fonte.
 - Marketplace aumenta muito o escopo de privacidade, moderação, fraude e suporte; entra somente após a base editorial estar estável.

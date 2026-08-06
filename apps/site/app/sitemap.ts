@@ -1,16 +1,16 @@
 import type { MetadataRoute } from "next";
-import { articles, categories, slugifyCategory } from "./lib/content";
+import { categories, publishedArticles, slugifyCategory } from "./lib/content";
 
 const baseUrl = "https://blogdocarro.com";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const staticRoutes = ["", "/sobre", "/contato", "/marketplace", "/loja", "/loja/chaveiro-presente"];
+  const staticRoutes = ["", "/sobre", "/contato", "/marketplace", "/loja", "/loja/chaveiro-presente", "/privacidade", "/termos"];
   const staticEntries: MetadataRoute.Sitemap = staticRoutes.map((route) => ({
     url: `${baseUrl}${route}`,
     changeFrequency: route === "" ? "daily" : "weekly",
     priority: route === "" ? 1 : 0.7,
   }));
-  const articleEntries = articles.map((article) => ({
+  const articleEntries = publishedArticles.map((article) => ({
     url: `${baseUrl}/artigos/${article.slug}`,
     lastModified: article.updatedAt ?? article.publishedAt,
     changeFrequency: "weekly" as const,

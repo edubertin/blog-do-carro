@@ -174,7 +174,7 @@ function PaymentStep(props: Readonly<{ onBack: () => void; onNext: () => void }>
   return (
     <div className="checkoutForm paymentStep">
       <StepHeading icon={<LockKey size={24} weight="fill" />} label="03 · Pagamento" title="Pix, sem pagar nada." description="Esta etapa demonstra a confirmação visual. Não existe QR Code ou código bancário válido." />
-      <IntegrationStatus name="PayPix" detail="Nenhuma API, chave ou cobrança está conectada." enabled={commerceIntegrations.payPix} />
+      <IntegrationStatus name="Mercado Pago · Pix" detail="Nenhuma API, chave ou cobrança está conectada." enabled={commerceIntegrations.mercadoPagoPix} />
       <div className="demoPix"><LockKey size={34} weight="duotone" /><span>PIX DEMONSTRATIVO</span><strong>Nenhum QR Code ou código será gerado.</strong><p>A implementação real ficará isolada atrás do provedor de pagamento.</p></div>
       <StepActions back={props.onBack} nextLabel="Revisar pedido" onNext={props.onNext} />
     </div>

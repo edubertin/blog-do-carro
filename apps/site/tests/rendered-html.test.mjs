@@ -18,6 +18,42 @@ const context = {
   passThroughOnException() {},
 };
 
+const draftArticleSlug = "rascunho-editorial-nao-publicado";
+
+function editorialFixture(status, slug) {
+  return {
+    status,
+    slug,
+    category: "Sedan",
+    title: status === "published" ? "Artigo público de teste" : "Rascunho editorial de teste",
+    subtitle: "Fixture usada somente para validar a projeção editorial.",
+    dateLabel: "PENDENTE",
+    readTime: "1 MIN",
+    image: "/images/articles/hero-negociacoes.png",
+    imageAlt: "Imagem de teste",
+    body: ["Conteúdo de teste."],
+    opinion: "Opinião de teste.",
+    faq: [{ question: "Pergunta de teste?", answer: "Resposta de teste." }],
+  };
+}
+
+async function loadContentModule() {
+  const [{ readFile }, typescriptModule] = await Promise.all([
+    import("node:fs/promises"),
+    import("typescript"),
+  ]);
+  const sourceUrl = new URL("../app/lib/content.ts", import.meta.url);
+  const source = await readFile(sourceUrl, "utf8");
+  const output = typescriptModule.default.transpileModule(source, {
+    compilerOptions: {
+      module: typescriptModule.default.ModuleKind.ESNext,
+      target: typescriptModule.default.ScriptTarget.ES2022,
+    },
+  }).outputText;
+  const moduleUrl = `data:text/javascript;base64,${Buffer.from(output).toString("base64")}`;
+  return import(moduleUrl);
+}
+
 const htmlRoutes = [
   ["/", /Loja da comunidade/i],
   ["/artigos/moto-por-spin-financiada-bom-negocio", /Minha opinião/i],
@@ -32,6 +68,17 @@ const htmlRoutes = [
   ["/marketplace", /Em preparação/i],
   ["/privacidade", /Dados locais do mock/i],
   ["/termos", /Escopo atual/i],
+  ["/admin", /Hoje na garagem/i],
+  ["/admin/analytics", /Sinais, não vaidade/i],
+  ["/admin/artigos", /A pauta nasce do vídeo/i],
+  ["/admin/artigos/novo", /Novo artigo/i],
+  ["/admin/home", /Composição da home/i],
+  ["/admin/menu", /Menu e categorias/i],
+  ["/admin/loja/produtos", /Produtos/i],
+  ["/admin/loja/configuracoes", /Configurações/i],
+  ["/admin/pedidos", /Pedidos demonstrativos/i],
+  ["/admin/integracoes", /Control plane/i],
+  ["/admin/seguranca", /Acesso e auditoria/i],
 ];
 
 async function fetchRoute(worker, path, customEnvironment = environment) {
@@ -56,9 +103,89 @@ test("serves crawler metadata", async () => {
   const robots = await fetchRoute(worker, "/robots.txt");
   const sitemap = await fetchRoute(worker, "/sitemap.xml");
   assert.equal(robots.status, 200);
-  assert.match(await robots.text(), /Sitemap: https:\/\/blogdocarro\.com\/sitemap\.xml/i);
+  const robotsText = await robots.text();
+  assert.match(robotsText, /Sitemap: https:\/\/blogdocarro\.com\/sitemap\.xml/i);
+  assert.match(robotsText, /Disallow: \/admin\//i);
   assert.equal(sitemap.status, 200);
-  assert.match(await sitemap.text(), /<loc>https:\/\/blogdocarro\.com<\/loc>/i);
+  const sitemapText = await sitemap.text();
+  assert.match(sitemapText, /<loc>https:\/\/blogdocarro\.com<\/loc>/i);
+  assert.match(sitemapText, /<loc>https:\/\/blogdocarro\.com\/privacidade<\/loc>/i);
+  assert.match(sitemapText, /<loc>https:\/\/blogdocarro\.com\/termos<\/loc>/i);
+  assert.doesNotMatch(sitemapText, new RegExp(draftArticleSlug, "i"));
+});
+
+test("projects only published editorial records", async () => {
+  const { findPublishedArticleIn, selectPublishedArticles } = await loadContentModule();
+  const records = [
+    editorialFixture("published", "artigo-publicado-de-teste"),
+    editorialFixture("draft", draftArticleSlug),
+  ];
+  const projected = selectPublishedArticles(records);
+  assert.deepEqual(projected.map((article) => article.slug), ["artigo-publicado-de-teste"]);
+  assert.equal(findPublishedArticleIn(records, draftArticleSlug), undefined);
+});
+
+test("does not resolve an unpublished article route", async () => {
+  const worker = await loadWorker();
+  const [draftRoute, home, emptyCategory] = await Promise.all([
+    fetchRoute(worker, `/artigos/${draftArticleSlug}`),
+    fetchRoute(worker, "/"),
+    fetchRoute(worker, "/categoria/sedan"),
+  ]);
+  assert.equal(draftRoute.status, 404);
+  assert.doesNotMatch(await home.text(), new RegExp(draftArticleSlug, "i"));
+  const categoryHtml = await emptyCategory.text();
+  assert.match(categoryHtml, /Garagem em preparação/i);
+  assert.doesNotMatch(categoryHtml, new RegExp(draftArticleSlug, "i"));
+});
+
+test("keeps the administrative mock local and non-cacheable", async () => {
+  const worker = await loadWorker();
+  const localAdmin = await fetchRoute(worker, "/admin/integracoes");
+  const localHtml = await localAdmin.text();
+  assert.equal(localAdmin.status, 200);
+  assert.equal(localAdmin.headers.get("cache-control"), "private, no-store");
+  assert.equal(localAdmin.headers.get("content-security-policy"), "frame-ancestors 'none'");
+  assert.equal(localAdmin.headers.get("permissions-policy"), "camera=(), geolocation=(), microphone=()");
+  assert.equal(localAdmin.headers.get("referrer-policy"), "no-referrer");
+  assert.equal(localAdmin.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(localAdmin.headers.get("x-frame-options"), "DENY");
+  assert.match(localHtml, /name="robots" content="noindex, nofollow/i);
+  assert.match(localHtml, /Não cole senhas, tokens, chaves ou dados reais/i);
+
+  const publicAdmin = await worker.fetch(new Request("https://blogdocarro.com/admin"), environment, context);
+  assert.equal(publicAdmin.status, 404);
+});
+
+test("adds a safe request ID without reflecting invalid input", async () => {
+  const worker = await loadWorker();
+  const generated = await fetchRoute(worker, "/");
+  assert.match(generated.headers.get("x-request-id") ?? "", /^[0-9a-f-]{36}$/i);
+
+  const supplied = await worker.fetch(new Request("http://localhost/", {
+    headers: { "X-Request-Id": "release-check-2026" },
+  }), environment, context);
+  assert.equal(supplied.headers.get("x-request-id"), "release-check-2026");
+
+  const rejected = await worker.fetch(new Request("http://localhost/", {
+    headers: { "X-Request-Id": "unsafe value with spaces" },
+  }), environment, context);
+  assert.notEqual(rejected.headers.get("x-request-id"), "unsafe value with spaces");
+});
+
+test("returns a sanitized and correlated response for unexpected failures", async () => {
+  const worker = await loadWorker();
+  const failingEnvironment = {
+    ASSETS: { fetch: async () => { throw new Error("synthetic private detail"); } },
+  };
+  const request = new Request("http://localhost/_next/image?url=%2Fmissing.png&w=640&q=75", {
+    headers: { "X-Request-Id": "release-error-check" },
+  });
+  const response = await worker.fetch(request, failingEnvironment, context);
+  assert.equal(response.status, 500);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(response.headers.get("x-request-id"), "release-error-check");
+  assert.equal(await response.text(), "Internal Server Error");
 });
 
 test("renders canonical, robots and structured article metadata", async () => {
@@ -68,7 +195,12 @@ test("renders canonical, robots and structured article metadata", async () => {
   const articleHtml = await article.text();
   const checkoutHtml = await checkout.text();
   assert.match(articleHtml, /rel="canonical" href="https:\/\/blogdocarro\.com\/artigos\/moto-por-spin-financiada-bom-negocio"/i);
+  assert.match(articleHtml, /"@type":"Organization"/i);
+  assert.match(articleHtml, /"@type":"BreadcrumbList"/i);
+  assert.match(articleHtml, /"@type":"Article"/i);
   assert.match(articleHtml, /"@type":"FAQPage"/i);
+  assert.doesNotMatch(articleHtml, /"datePublished"/i);
+  assert.doesNotMatch(articleHtml, /youtube-nocookie\.com\/embed/i);
   assert.match(checkoutHtml, /name="robots" content="noindex, nofollow"/i);
 });
 

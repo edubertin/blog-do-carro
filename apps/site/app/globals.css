@@ -186,7 +186,7 @@ img { display: block; }
 .searchResults p { padding: 24px 0; color: var(--muted); font-size: .8rem; }
 
 .backLink { min-height: 44px; display: inline-flex; align-items: center; gap: 7px; color: #aaa; font-size: .7rem; font-weight: 600; }
-.breadcrumbs { margin: 18px 0 36px; display: flex; align-items: center; gap: 7px; overflow: hidden; color: #6f6f6f; font-size: .62rem; white-space: nowrap; }
+.breadcrumbs { margin: 18px 0 36px; display: flex; align-items: center; gap: 7px; overflow: hidden; color: #8a8a8a; font-size: .62rem; white-space: nowrap; }
 .breadcrumbs a { color: #aaa; }
 .breadcrumbs strong { overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
 .articlePage { padding-bottom: 50px; }
@@ -211,6 +211,17 @@ img { display: block; }
 .videoFacade > span { padding: 12px 16px; display: inline-flex; align-items: center; gap: 9px; color: var(--ink); background: var(--yellow); border-radius: 999px; font-size: .75rem; font-weight: 700; }
 .youtubeEmbed { position: relative; width: min(100%, 410px); aspect-ratio: 9 / 16; margin: auto; overflow: hidden; background: #151515; border: 1px solid #333; border-radius: var(--radius-md); }
 .youtubeEmbed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.youtubeConsentEmbed { isolation: isolate; display: flex; align-items: flex-end; }
+.youtubeConsentEmbed::after { content: ""; position: absolute; z-index: -1; inset: 0; background: linear-gradient(180deg, rgb(0 0 0 / 12%) 20%, rgb(0 0 0 / 92%) 78%); }
+.youtubeConsentEmbed > img { z-index: -2; object-fit: cover; }
+.youtubeConsentCopy { width: 100%; padding: 28px 22px; }
+.youtubeConsentCopy > span { display: block; color: var(--yellow); font-size: .62rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.youtubeConsentCopy h3 { max-width: 17ch; margin-top: 8px; font-family: "Source Serif 4", Georgia, serif; font-size: 1.55rem; line-height: 1.04; letter-spacing: -.035em; }
+.youtubeConsentCopy p { margin-top: 12px; color: #d0d0d0; font-size: .72rem; line-height: 1.55; }
+.youtubeConsentCopy button { min-height: 48px; width: 100%; margin-top: 18px; padding: 0 18px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; border: 0; border-radius: 999px; color: var(--ink); background: var(--yellow); font-size: .75rem; font-weight: 700; cursor: pointer; transition: background .2s ease, transform .2s ease; }
+.youtubeConsentCopy button:hover { background: var(--yellow-strong); }
+.youtubeConsentCopy button:active { transform: scale(.98); }
+.youtubeConsentCopy > a { min-height: 44px; margin-top: 4px; display: flex; align-items: center; justify-content: center; color: #c4c4c4; font-size: .67rem; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .faqList { border-top: 1px solid var(--line); }
 .faqList details { padding: 18px 0; border-bottom: 1px solid var(--line); }
 .faqList summary { cursor: pointer; font-size: .86rem; font-weight: 600; line-height: 1.4; }

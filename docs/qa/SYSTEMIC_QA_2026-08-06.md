@@ -10,7 +10,8 @@ Revisão do portal público, fluxo comercial demonstrativo, SEO, Worker de image
 - Lint: aprovado.
 - TypeScript estrito: aprovado.
 - Build Vinext/Vite: aprovado.
-- Testes do HTML renderizado: 18 aprovados.
+- Testes do HTML renderizado: 34 aprovados.
+- Playwright automatizado: 12 aprovados em Chromium mobile e desktop.
 - Árvore de dependências de topo: aprovada, sem pacotes extraneous.
 - Auditoria das dependências de produção: 0 vulnerabilidades.
 
@@ -23,13 +24,19 @@ Revisão do portal público, fluxo comercial demonstrativo, SEO, Worker de image
 - Menu: foco inicial no fechamento, fundo inerte, `Escape` fecha e o foco retorna ao acionador.
 - Produto: adicionar abre `/carrinho` e preserva o item no armazenamento local.
 - Checkout: ao avançar, o foco chega ao título da nova etapa.
+- Axe: nenhum achado crítico ou sério nas páginas de artigo e editor administrativo auditadas.
+- YouTube: nenhum iframe ou pedido ao player existe antes da escolha explícita; o player aparece somente após o clique.
+- A suíte de navegador sobe o artefato de produção com `vinext start` em porta isolada, não o servidor de desenvolvimento.
 
 ## Correções aplicadas
 
 - O Worker aceita `/_next/image` e `/_vinext/image` e usa `fetch` como fallback local quando o binding `ASSETS` não existe.
 - Categorias sem artigos mostram um estado vazio coerente.
 - Datas editoriais de exibição foram separadas das datas ISO usadas em SEO.
-- Artigos agora incluem canonical e schemas `Article` e `FAQPage`; páginas públicas receberam canonical e descrição.
+- Artigos agora incluem canonical e schemas `Organization`, `BreadcrumbList`, `Article` e `FAQPage`; páginas públicas receberam canonical e descrição.
+- A projeção pública filtra artigos por status e rascunhos não resolvem rota, busca, home, categoria ou sitemap.
+- O player do YouTube usa uma fachada local e `youtube-nocookie` somente após ação do visitante.
+- O Worker gera `X-Request-Id`; o admin recebeu CSP `frame-ancestors` e política de permissões restritiva.
 - Checkout, carrinho e confirmação demonstrativa permanecem fora do índice.
 - Newsletter, interesse e comentários declaram antes do envio que são simulações sem persistência.
 - Busca cobre título, categoria, subtítulo e corpo; relacionados priorizam a mesma categoria.
@@ -51,4 +58,4 @@ O audit completo mantém quatro avisos de desenvolvimento em `undici@7.28.0`, de
 
 ## Gate de publicação
 
-Antes de publicar, repetir o Playwright no preview do Sites, verificar bytes das imagens mobile com `IMAGES`, revisar domínio/canonicals e obter autorização explícita para criar remoto, commit, push ou deploy.
+Antes de publicar no Sites, repetir o Playwright no preview, verificar bytes das imagens mobile com `IMAGES` e obter autorização explícita para o deploy. O domínio canônico definitivo está registrado como `blogdocarro.com`.

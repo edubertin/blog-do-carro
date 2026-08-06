@@ -8,6 +8,7 @@ import type { Article } from "@/app/lib/content";
 import { articles, slugifyCategory } from "@/app/lib/content";
 import { Comments } from "./comments";
 import { Reveal } from "./motion";
+import { YouTubeConsentEmbed } from "./youtube-consent-embed";
 
 function Breadcrumbs({ article }: { article: Article }) {
   return <nav className="breadcrumbs" aria-label="Breadcrumb"><Link href="/">Início</Link><span>/</span><Link href={`/categoria/${slugifyCategory(article.category)}`}>{article.category}</Link><span>/</span><strong>Artigo</strong></nav>;
@@ -40,7 +41,7 @@ function VideoFacade({ article }: { article: Article }) {
     return (
       <section className="videoSection">
         <div className="articleSectionTitle"><span className="eyebrow">Assista também</span><h2>O vídeo que abriu a conversa</h2></div>
-        <div className="youtubeEmbed"><iframe src={`https://www.youtube-nocookie.com/embed/${article.videoId}`} title={article.title} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
+        <YouTubeConsentEmbed videoId={article.videoId} title={article.title} posterSrc={article.image} />
       </section>
     );
   }

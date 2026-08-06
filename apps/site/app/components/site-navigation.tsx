@@ -10,7 +10,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactElement, RefObject } from "react";
 import { CartLink } from "@/app/commerce/cart-link";
-import { articles, categories, slugifyCategory } from "@/app/lib/content";
+import { categories, publishedArticles, slugifyCategory } from "@/app/lib/content";
 import { BrandLogo } from "./brand-logo";
 
 type CloseHandler = { onClose: () => void };
@@ -115,10 +115,10 @@ function MenuDrawer({ open, onClose }: DrawerProps): ReactElement {
 function SearchResults({ query, onClose }: { query: string; onClose: () => void }): ReactElement {
   const results = useMemo(() => {
     const term = query.trim().toLocaleLowerCase("pt-BR");
-    return term ? articles.filter((article) => {
+    return term ? publishedArticles.filter((article) => {
       const searchableContent = [article.title, article.category, article.subtitle, ...article.body].join(" ");
       return searchableContent.toLocaleLowerCase("pt-BR").includes(term);
-    }) : articles;
+    }) : publishedArticles;
   }, [query]);
   return (
     <div className="searchResults">

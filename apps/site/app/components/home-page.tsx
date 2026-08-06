@@ -7,7 +7,7 @@ import { TrendUp } from "@phosphor-icons/react/dist/ssr/TrendUp";
 import Image from "next/image";
 import { SiteLink as Link } from "@/app/components/site-link";
 import type { ReactElement } from "react";
-import { articles, categoryGroups, slugifyCategory } from "@/app/lib/content";
+import { categoryGroups, publishedArticles, slugifyCategory } from "@/app/lib/content";
 import { NewsletterForm } from "./lead-forms";
 import { Reveal } from "./motion";
 import { VideoCarousel } from "./video-carousel";
@@ -20,7 +20,7 @@ function SectionHeading({ title, icon = false }: { title: string; icon?: boolean
   return <div className="sectionHeading"><h2>{title}</h2>{icon ? <Fire size={19} weight="fill" aria-hidden="true" /> : null}</div>;
 }
 
-function ArticleRow({ article }: { article: (typeof articles)[number] }) {
+function ArticleRow({ article }: { article: (typeof publishedArticles)[number] }) {
   return (
     <Link className="articleRow" href={`/artigos/${article.slug}`}>
       <div className="articleThumb"><Image src={article.image} alt="" fill sizes="112px" /></div>
@@ -34,7 +34,7 @@ function LatestArticles() {
   return (
     <Reveal className="contentSection" delay={0.08}>
       <SectionHeading title="Agora no Blog" />
-      <div className="articleList">{articles.slice(0, 3).map((article) => <ArticleRow article={article} key={article.slug} />)}</div>
+      <div className="articleList">{publishedArticles.slice(0, 3).map((article) => <ArticleRow article={article} key={article.slug} />)}</div>
     </Reveal>
   );
 }
@@ -70,7 +70,7 @@ function PopularArticles() {
   return (
     <Reveal className="contentSection popularSection" delay={0.14}>
       <SectionHeading title="Leituras em destaque" icon />
-      <div className="popularList">{articles.slice(0, 4).map((article, index) => <Link className="popularRow" href={`/artigos/${article.slug}`} key={article.slug}><span>0{index + 1}</span><h3>{article.title}</h3><TrendUp size={18} aria-hidden="true" /></Link>)}</div>
+      <div className="popularList">{publishedArticles.slice(0, 4).map((article, index) => <Link className="popularRow" href={`/artigos/${article.slug}`} key={article.slug}><span>0{index + 1}</span><h3>{article.title}</h3><TrendUp size={18} aria-hidden="true" /></Link>)}</div>
     </Reveal>
   );
 }

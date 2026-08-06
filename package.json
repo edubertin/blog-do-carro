@@ -15,7 +15,8 @@
     "start": "npm run start --workspace @blog-do-carro/site",
     "lint": "npm run lint --workspace @blog-do-carro/site",
     "typecheck": "npm run typecheck --workspace @blog-do-carro/site",
-    "test": "npm run test:rendered --workspace @blog-do-carro/site",
+    "test": "npm run test --workspace @blog-do-carro/site",
+    "test:e2e": "npm run test:e2e --workspace @blog-do-carro/site",
     "qa": "npm run qa --workspace @blog-do-carro/site",
     "check:deps": "npm ls --depth=0 && npm audit --omit=dev --audit-level=high",
     "ci": "npm run qa && npm run check:deps"

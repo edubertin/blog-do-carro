@@ -1,6 +1,6 @@
 export const commerceIntegrations = {
   mercadoLivreLogin: false,
-  payPix: false,
+  mercadoPagoPix: false,
   meuEnvio: false,
   persistentOrders: false,
 } as const;

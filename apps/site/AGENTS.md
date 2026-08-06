@@ -13,7 +13,7 @@ Leia primeiro `../../AGENTS.md`, `../../PROJECT.md` e `../../docs/IMPLEMENTATION
 
 - O público é majoritariamente mobile; valide primeiro em 360–430 px.
 - Loja e checkout são demonstrações sem cobrança, pedido persistente ou envio.
-- D1, R2, Mercado Livre, PayPix e Meu Envio permanecem desativados até uma fase explicitamente aprovada.
+- D1, R2, Mercado Livre, Mercado Pago Pix e Meu Envio permanecem desativados até uma fase explicitamente aprovada.
 
 ## Qualidade
 
