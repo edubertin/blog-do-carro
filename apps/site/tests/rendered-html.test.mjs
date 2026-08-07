@@ -227,6 +227,17 @@ test("renders only sanitized runtime inventory and ignores spoofed inventory hea
   assert.doesNotMatch(html, /secret-private-value/i);
 });
 
+test("returns legible Portuguese errors from the admin API", async () => {
+  const worker = await loadWorker();
+  const response = await worker.fetch(
+    new Request("http://localhost/api/admin/articles"),
+    environment,
+    context,
+  );
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { error: "Banco editorial indisponível." });
+});
+
 test("gates the hosted admin through SIWC and a server-side owner bootstrap", async () => {
   const worker = await loadWorker();
   const configuredEnvironment = { ...environment, ADMIN_OWNER_USER_IDS: '["owner-alpha"]' };

@@ -1,6 +1,7 @@
 import type { ArticleRevisionState, ProductState } from "./schema";
 
 export type ArticleDraftInput = Readonly<{
+  articleId?: string;
   title: string;
   subtitle: string;
   slug: string;
@@ -10,9 +11,14 @@ export type ArticleDraftInput = Readonly<{
   opinion: string;
   imageUrl: string;
   imageAlt: string;
-  youtubeVideoId?: string;
+  youtubeVideoId: string;
   readTimeMinutes: number;
   faq: readonly Readonly<{ question: string; answer: string }>[];
+}>;
+
+export type AdminArticleEditorRecord = Readonly<{
+  article: AdminArticleSummary;
+  draft: ArticleDraftInput;
 }>;
 
 export type AdminArticleSummary = Readonly<{
