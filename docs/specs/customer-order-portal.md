@@ -383,8 +383,8 @@ O modo local `memory` só pode funcionar em loopback, com outbox de teste isolad
 
 ## 22. Dependências e decisões pendentes
 
-- domínio canônico e subdomínio de envio;
-- provedor real de pagamento e modelo definitivo de pedidos;
+- subdomínio de envio transacional;
+- modelo definitivo de pedidos e homologação do Mercado Pago exclusivamente para Pix;
 - transportadora e origem do rastreio;
 - política jurídica de retenção, exclusão, troca e reembolso;
 - compatibilidade da versão vigente do Better Auth com Vinext e D1;

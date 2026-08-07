@@ -4,16 +4,16 @@ import { Quotes } from "@phosphor-icons/react/dist/ssr/Quotes";
 import Image from "next/image";
 import { SiteLink as Link } from "@/app/components/site-link";
 import type { ReactElement } from "react";
-import type { Article } from "@/app/lib/content";
-import { articles, slugifyCategory } from "@/app/lib/content";
+import type { PublicArticle } from "@/domain/public-content";
 import { Comments } from "./comments";
 import { Reveal } from "./motion";
+import { YouTubeConsentEmbed } from "./youtube-consent-embed";
 
-function Breadcrumbs({ article }: { article: Article }) {
-  return <nav className="breadcrumbs" aria-label="Breadcrumb"><Link href="/">Início</Link><span>/</span><Link href={`/categoria/${slugifyCategory(article.category)}`}>{article.category}</Link><span>/</span><strong>Artigo</strong></nav>;
+function Breadcrumbs({ article }: { article: PublicArticle }) {
+  return <nav className="breadcrumbs" aria-label="Breadcrumb"><Link href="/">Início</Link><span>/</span><Link href={`/categoria/${article.categorySlug}`}>{article.category}</Link><span>/</span><strong>Artigo</strong></nav>;
 }
 
-function ArticleIntro({ article }: { article: Article }) {
+function ArticleIntro({ article }: { article: PublicArticle }) {
   return (
     <header className="articleIntro">
       <Link className="backLink" href="/"><ArrowLeft size={17} />Voltar ao início</Link>
@@ -35,12 +35,12 @@ function Opinion({ text }: { text: string }) {
   );
 }
 
-function VideoFacade({ article }: { article: Article }) {
+function VideoFacade({ article }: { article: PublicArticle }) {
   if (article.videoId) {
     return (
       <section className="videoSection">
         <div className="articleSectionTitle"><span className="eyebrow">Assista também</span><h2>O vídeo que abriu a conversa</h2></div>
-        <div className="youtubeEmbed"><iframe src={`https://www.youtube-nocookie.com/embed/${article.videoId}`} title={article.title} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
+        <YouTubeConsentEmbed videoId={article.videoId} title={article.title} posterSrc={article.image} />
       </section>
     );
   }
@@ -56,7 +56,7 @@ function VideoFacade({ article }: { article: Article }) {
   );
 }
 
-function Faq({ article }: { article: Article }) {
+function Faq({ article }: { article: PublicArticle }) {
   return (
     <section className="articleBlock">
       <div className="articleSectionTitle"><span className="eyebrow">Perguntas frequentes</span><h2>FAQ</h2></div>
@@ -65,29 +65,26 @@ function Faq({ article }: { article: Article }) {
   );
 }
 
-function findRelatedArticles(article: Article): Article[] {
-  const candidates = articles.filter((item) => item.slug !== article.slug);
-  const sameCategory = candidates.filter((item) => item.category === article.category);
-  const otherCategories = candidates.filter((item) => item.category !== article.category);
-  return [...sameCategory, ...otherCategories].slice(0, 2);
-}
-
-function Related({ article }: { article: Article }) {
-  const related = findRelatedArticles(article);
+function Related({ articles }: { articles: readonly PublicArticle[] }) {
   return (
     <section className="articleBlock">
       <div className="articleSectionTitle"><span className="eyebrow">Continue lendo</span><h2>Artigos relacionados</h2></div>
-      <div className="relatedGrid">{related.map((item) => <Link href={`/artigos/${item.slug}`} key={item.slug}><div><Image src={item.image} alt="" fill sizes="320px" /></div><span>{item.category}</span><h3>{item.title}</h3></Link>)}</div>
+      <div className="relatedGrid">{articles.map((item) => <Link href={`/artigos/${item.slug}`} key={item.slug}><div><Image src={item.image} alt="" fill sizes="320px" /></div><span>{item.category}</span><h3>{item.title}</h3></Link>)}</div>
     </section>
   );
 }
 
-export function ArticlePage({ article }: { article: Article }): ReactElement {
+type ArticlePageProps = Readonly<{
+  article: PublicArticle;
+  relatedArticles: readonly PublicArticle[];
+}>;
+
+export function ArticlePage({ article, relatedArticles }: ArticlePageProps): ReactElement {
   return (
     <main className="articlePage">
       <Reveal><ArticleIntro article={article} /></Reveal>
       <Reveal className="articleLeadImage"><Image src={article.image} alt={article.imageAlt} fill loading="eager" fetchPriority="high" sizes="(max-width: 1023px) 100vw, 980px" /></Reveal>
-      <article className="articleBody">{article.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}<Opinion text={article.opinion} /><VideoFacade article={article} /><Faq article={article} /><Related article={article} /><section className="articleBlock commentsBlock"><div className="articleSectionTitle"><span className="eyebrow">Comunidade</span><h2>Comentários</h2></div><Comments /></section></article>
+      <article className="articleBody">{article.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}<Opinion text={article.opinion} /><VideoFacade article={article} /><Faq article={article} /><Related articles={relatedArticles} /><section className="articleBlock commentsBlock"><div className="articleSectionTitle"><span className="eyebrow">Comunidade</span><h2>Comentários</h2></div><Comments /></section></article>
     </main>
   );
 }

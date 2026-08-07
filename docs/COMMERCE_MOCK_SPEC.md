@@ -37,7 +37,7 @@ O fluxo é deliberadamente demonstrativo. Nenhuma tela pode criar cobrança, eti
 As flags ficam em `app/commerce/integration-config.ts` e permanecem `false`:
 
 - Login Mercado Livre.
-- PayPix.
+- Mercado Pago Pix.
 - Meu Envio.
 - Pedidos persistentes.
 

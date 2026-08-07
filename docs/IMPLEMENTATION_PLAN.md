@@ -15,6 +15,18 @@ Construir um portal automotivo brasileiro com experiência de aplicativo, priori
 - Motion discreto, com respeito a `prefers-reduced-motion`.
 - Imagens editoriais responsivas pela API compatível `next/image`, atendida pelo worker Vinext.
 - Produto “Chaveiro Presente” com fluxo de compra demonstrativo, sem cobrança, persistência ou envio.
+- Domínio canônico definitivo `https://blogdocarro.com`.
+- Mercado Pago como único destino futuro de pagamento, exclusivamente para Pix e ainda bloqueado.
+- Categorias sem conteúdo publicado permanecem vazias; o produto não gera artigos com IA para preenchê-las.
+
+### Registro de decisões
+
+- `docs/adr/0001-editorial-source-pending.md`: CMS interno com D1 como fonte editorial única e projeção publicada.
+- `docs/adr/0002-admin-identity-provisioning.md`: Sites/ChatGPT SIWC, RBAC e bootstrap server-side de owner fora do Git.
+- `docs/adr/0003-canonical-domain.md`: `blogdocarro.com` é a origem canônica.
+- `docs/adr/0004-mercado-pago-pix-only.md`: Mercado Pago somente Pix, sem ativação real.
+- `docs/adr/0005-empty-categories-no-ai-content.md`: categorias vazias não recebem conteúdo gerado.
+- `docs/adr/0006-d1-foundation-without-pii.md`: primeiro migration D1 local sem PII, cliente, pagamento ou envio.
 
 ## Arquitetura alvo
 
@@ -27,18 +39,18 @@ apps/site (Vinext + Vite + worker Cloudflare)
 
 Sites
 ├── publicação do worker e assets
-├── D1 futuro: conteúdo, comércio e métricas agregadas
+├── D1 futuro: editorial, administração, comércio e métricas
 ├── R2 futuro: mídia própria
 └── conectores futuros: pagamentos, frete, e-mail e observabilidade
 ```
 
-O conteúdo editorial e os dados transacionais devem permanecer separados. Artigos, autores, categorias, menus e páginas vivem no CMS; usuários, favoritos, anúncios, pedidos e eventos de pagamento vivem no banco da aplicação.
+O conteúdo editorial e os dados transacionais devem permanecer separados por domínio. D1 será a única fonte de verdade de artigos, revisões, autores, categorias, menus, páginas e composição da home; usuários, favoritos, anúncios, pedidos e eventos de pagamento vivem em tabelas próprias. Uma interface de repositório server-side isola o domínio da persistência, e o portal público sempre consome uma projeção somente de conteúdo publicado.
 
 ### Padrão de publicação no Sites
 
 - Preservar o `project_id` quando `apps/site/.openai/hosting.json` for criado pelo fluxo oficial do Sites.
 - Usar Vinext com Vite e worker Cloudflare, seguindo a estrutura da Plimcor.
-- Reservar D1 para dados transacionais e R2 para mídia própria quando esses recursos entrarem no produto.
+- Reservar D1 para o CMS interno e demais domínios aprovados, e R2 para mídia própria quando esses recursos entrarem no produto.
 - Manter scripts de build, qualidade e segurança centralizados na raiz do workspace.
 - Não adicionar configuração ou dependência de publicação para provedores externos ao Sites.
 
@@ -56,7 +68,9 @@ Todo artigo deve exigir os campos:
 8. artigos relacionados;
 9. status `rascunho`, `revisão`, `agendado` ou `publicado`.
 
-Configurações da página inicial, menu e newsletter devem ser documentos próprios no CMS, editáveis sem alteração de código.
+Configurações da página inicial, menu e newsletter devem ser documentos próprios no CMS interno, editáveis sem alteração de código.
+
+Categorias sem artigos publicados exibem um estado vazio honesto. Nenhum artigo será gerado ou publicado por IA apenas para preencher uma categoria.
 
 ## Fases
 
@@ -72,8 +86,9 @@ Configurações da página inicial, menu e newsletter devem ser documentos próp
 
 ### Fase 1 — fundação editorial
 
-- Ativar D1 e migrar o conteúdo de demonstração para o modelo editorial.
-- Criar painel com autenticação, sessão segura e perfis de editor e administrador.
+- Implementar a interface de repositório editorial e o schema aprovado antes do CRUD real.
+- Ativar D1 somente em preview, para os domínios aprovados e com migrations versionadas.
+- Proteger o painel com Sites/ChatGPT SIWC, autorização server-side, RBAC e bootstrap de owner fora do Git.
 - Implementar preview, rascunho, agendamento, publicação e histórico de alterações.
 - Configurar sitemap, feed, redirects e revalidação automática.
 - Ativar R2 para uploads com validação de tipo, tamanho, dimensões e texto alternativo obrigatório.
@@ -90,7 +105,7 @@ Configurações da página inicial, menu e newsletter devem ser documentos próp
 - Catálogo, estoque e variações do Chaveiro Presente.
 - Carrinho e checkout no servidor seguindo o padrão já validado no Plimcor.
 - Acesso passwordless por magic link e área **Meus pedidos**, conforme `docs/specs/customer-order-portal.md`.
-- Adaptadores isolados para Login Mercado Livre, PayPix e Meu Envio após homologação.
+- Adaptadores isolados para Login Mercado Livre, Mercado Pago exclusivamente para Pix e Meu Envio após homologação.
 - Pagamento com idempotência, webhook assinado e reconciliação.
 - Política de entrega, trocas, privacidade e suporte.
 
@@ -123,18 +138,20 @@ O painel será um conjunto protegido dentro do mesmo aplicativo, sem um segundo 
 | `/admin/menu` | editar navegação e categorias exibidas |
 | `/admin/loja/produtos` | criar, editar, ativar e remover produtos do catálogo |
 | `/admin/loja/configuracoes` | identidade da loja, políticas e parâmetros comerciais |
+| `/admin/pedidos` | fila operacional, estados, eventos e exceções dos pedidos |
 | `/admin/integracoes` | status e configuração dos conectores permitidos |
+| `/admin/seguranca` | papéis, sessões, permissões, flags e trilha de auditoria |
 
 O editor salva automaticamente, alerta sobre alterações não publicadas e separa claramente `Salvar rascunho`, `Enviar para revisão`, `Agendar` e `Publicar`. A publicação exige validação de slug, SEO, imagem, categoria, vídeo, opinião e FAQ.
 
 ### Modelo de dados inicial no D1
 
-- Editorial: `articles`, `article_revisions`, `authors`, `categories`, `article_categories`, `faqs`, `menus` e `home_sections`.
+- Editorial: `articles`, `article_revisions`, `authors`, `categories`, categorias e FAQs por revisão, `menus` e `home_sections`, acessados por interface de repositório e separados da projeção publicada.
 - Vídeo: `youtube_videos`, vinculando ID, canal, metadados de origem, pôster e artigo.
-- Loja: `products`, `product_variants`, `inventory_movements` e `store_settings`.
-- Administração: `admin_users`, `roles`, `sessions` e `audit_log`.
+- Loja: `products`, `product_variants`, `inventory_balances`, `inventory_movements` e `store_settings`.
+- Administração: `admin_principals`, atribuições de papel, `audit_events` e idempotência; a sessão SIWC e a matriz de permissões permanecem sob responsabilidade do Sites e do código server-side.
 - Analytics: eventos brutos com retenção curta e tabelas diárias agregadas por rota, origem e dispositivo.
-- Comércio real, somente na Fase 3: `customers`, `addresses`, `orders`, `order_items`, `payments`, `shipments` e `webhook_events`.
+- Comércio real, somente em migration futura da Fase 3: clientes, endereços, pedidos, detalhes privados, itens, pagamentos, envios e webhooks, após ADR de PII e retenção.
 
 ### Analytics
 
@@ -145,15 +162,22 @@ O editor salva automaticamente, alerta sobre alterações não publicadas e sepa
 
 ### Conectores
 
-Cada integração terá um adaptador isolado, configuração por variável de ambiente, estado `desconectado`, `teste` ou `ativo`, teste de saúde e log sanitizado. Mercado Livre, PayPix e Meu Envio continuarão `desconectados` até homologação. Nenhuma chave ou token será salvo em artigo, produto, D1 ou código.
+Cada integração terá um adaptador isolado, configuração por variável de ambiente, estados separados de modo, configuração, saúde e ativação, teste de saúde e log sanitizado. Mercado Livre, Mercado Pago Pix e Meu Envio continuarão `desconectados` até homologação. O painel mostra somente nomes e estado dos secrets; valores são inseridos e rotacionados exclusivamente pelo mecanismo de secrets do Sites. Nenhuma chave ou token será recebida pelo painel ou salva em artigo, produto, D1 ou código.
+
+O bootstrap inicial de owner será executado exclusivamente no servidor, por SIWC e provisionamento e/ou secrets do Sites fora do Git. O fallback temporário por e-mail exige flag server-side explícita, existe apenas para capturar os IDs estáveis do Sites e será desligado antes de dados reais. Identificadores pessoais não fazem parte da configuração versionada, e identidade, sessão e autorização administrativas permanecem separadas da conta de cliente.
+
+A especificação completa do painel, RBAC, audit log, conectores e limites do mock está em `docs/specs/admin-control-plane.md`.
 
 ## Estado atual
 
 - Fase 0 implementada e estabilizada no runtime Vinext/Sites.
 - Build empacota o worker, assets e `.openai/hosting.json`.
-- D1 e R2 permanecem `null`; não existe efeito externo de pagamento ou envio.
-- Carrossel, conteúdo editorial, loja e checkout demonstrativo estão prontos para validação visual.
-- Próximo corte recomendado: autenticação do admin, schema editorial D1, migrações e CRUD de artigos antes de analytics ou comércio real.
+- Bindings lógicos D1/R2 estão declarados; leitura pública, escrita hospedada e upload permanecem desligados por flags independentes. Não existe efeito externo de pagamento ou envio.
+- As migrations D1 e o seed não sensível estão versionados, passam em SQLite efêmero e são exercitados no runtime local.
+- Carrossel, conteúdo editorial, busca, loja e checkout demonstrativo consomem contratos server-side e estão prontos para validação visual.
+- O CMS administrativo persiste artigos, produtos, composição da home e menu no D1 local, com fronteira SIWC/owner, audit log e nenhuma chamada externa.
+- A projeção pública já alimenta home, navegação, artigo, relacionados, categorias, sitemap e catálogo; corpos editoriais e SQL não entram nos chunks do navegador.
+- Próximo corte recomendado: validar o adapter D1 em preview isolado e implementar o publicador transacional antes de qualquer CRUD real.
 
 ## Spike — vídeo novo para artigo e carrossel
 
@@ -178,13 +202,13 @@ Cada integração terá um adaptador isolado, configuração por variável de am
 - Usar a rota interna `/loja` como catálogo e `/loja/chaveiro-presente` como página do produto.
 - Percorrer produto, carrinho, identificação, entrega, Pix, revisão e confirmação em modo demonstrativo.
 - Persistir somente produto e quantidade; dados pessoais permanecem na memória da página.
-- Manter Login Mercado Livre, PayPix, Meu Envio, cobrança e pedido persistente desligados.
+- Manter Login Mercado Livre, Mercado Pago, Meu Envio, cobrança e pedido persistente desligados.
 
 ### Venda futura
 
 - Ativar pedido e pagamento somente depois de validar fornecedor, amostra física, lote mínimo, preço, embalagem, frete, troca e política de privacidade.
 - Reaproveitar o padrão transacional do Plimcor, mantendo catálogo e checkout separados do conteúdo editorial.
-- Mercado Pago Checkout Bricks é o candidato inicial para Pix e cartão dentro do site; pedidos, estoque e webhooks continuam no servidor da aplicação.
+- Mercado Pago é o destino aprovado exclusivamente para Pix; cartão e outros meios ficam fora do primeiro corte. Credenciais, criação de pagamentos e webhooks continuam bloqueados até homologação, conforme `docs/adr/0004-mercado-pago-pix-only.md`.
 - Evolução sugerida: lista de interesse → pré-venda limitada → primeiro drop → catálogo recorrente.
 
 ## Critérios de aceite do MVP editorial
@@ -199,6 +223,7 @@ Cada integração terá um adaptador isolado, configuração por variável de am
 ## Riscos e limites
 
 - A história do “Presente” é tratada como repertório interno da comunidade; o texto final deve ser validado com o proprietário da marca.
+- As datas de publicação dos quatro vídeos ainda precisam ser confirmadas na fonte oficial; até lá, o schema omite `datePublished` em vez de inventar uma data.
 - Checkout exige regras comerciais, frete, estoque, política de troca e conta de pagamento antes de implementação.
 - Tabela FIPE e calculadora dependem da escolha de provedores e dos termos de uso de cada fonte.
 - Marketplace aumenta muito o escopo de privacidade, moderação, fraude e suporte; entra somente após a base editorial estar estável.

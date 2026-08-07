@@ -9,40 +9,45 @@ import { UserCircle } from "@phosphor-icons/react/UserCircle";
 import { SiteLink as Link } from "@/app/components/site-link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import type { Dispatch, FormEvent, ReactElement, ReactNode, SetStateAction } from "react";
+import type { Dispatch, FormEvent, ReactElement, ReactNode, RefObject, SetStateAction } from "react";
 import { useCart } from "@/app/commerce/cart-provider";
-import { formatMoney, keychainProduct, shippingById, shippingOptions } from "@/app/commerce/catalog";
+import { formatMoney, shippingById, shippingOptions } from "@/app/commerce/catalog";
 import type { ShippingId } from "@/app/commerce/catalog";
 import { initialAddress, initialBuyer } from "@/app/commerce/checkout-types";
 import type { AddressDetails, BuyerDetails, CheckoutStep } from "@/app/commerce/checkout-types";
 import { createDemoOrder, saveDemoOrder } from "@/app/commerce/demo-order-storage";
 import { commerceIntegrations } from "@/app/commerce/integration-config";
+import type { CatalogProduct } from "@/db/contracts";
 
 const stepOrder: readonly CheckoutStep[] = ["identity", "delivery", "payment", "review"];
 
-export function CheckoutFlow(): ReactElement {
-  const [step, setStep] = useState<CheckoutStep>("identity");
-  const [buyer, setBuyer] = useState<BuyerDetails>(initialBuyer);
-  const [address, setAddress] = useState<AddressDetails>(initialAddress);
-  const [shippingId, setShippingId] = useState<ShippingId>("economico");
-  const [submitting, setSubmitting] = useState(false);
+function useStepHeadingFocus(step: CheckoutStep): RefObject<HTMLElement | null> {
   const previousStep = useRef<CheckoutStep>("identity");
   const stepPanelRef = useRef<HTMLElement>(null);
-  const { items, ready, clearCart } = useCart();
-  const router = useRouter();
-  const item = items[0];
-
   useEffect(() => {
     if (previousStep.current === step) return;
     previousStep.current = step;
     stepPanelRef.current?.querySelector<HTMLElement>("h2")?.focus();
   }, [step]);
+  return stepPanelRef;
+}
+
+export function CheckoutFlow({ product }: Readonly<{ product: CatalogProduct }>): ReactElement {
+  const [step, setStep] = useState<CheckoutStep>("identity");
+  const [buyer, setBuyer] = useState<BuyerDetails>(initialBuyer);
+  const [address, setAddress] = useState<AddressDetails>(initialAddress);
+  const [shippingId, setShippingId] = useState<ShippingId>("economico");
+  const [submitting, setSubmitting] = useState(false);
+  const stepPanelRef = useStepHeadingFocus(step);
+  const { items, ready, clearCart } = useCart();
+  const router = useRouter();
+  const item = items[0];
 
   async function completeSimulation(): Promise<void> {
     if (!item || submitting) return;
     setSubmitting(true);
     await new Promise<void>((resolve) => window.setTimeout(resolve, 650));
-    const order = createDemoOrder(item.quantity, shippingId);
+    const order = createDemoOrder(item.quantity, product.maxPerCart, shippingId);
     saveDemoOrder(order);
     clearCart();
     router.push(`/pedido/demo/${order.id}`);
@@ -50,7 +55,7 @@ export function CheckoutFlow(): ReactElement {
 
   if (!ready) return <div className="commerceShell commerceLoading" role="status">Preparando o checkout…</div>;
   if (!item) return <EmptyCheckout />;
-  const subtotal = keychainProduct.priceCents * item.quantity;
+  const subtotal = product.priceCents * item.quantity;
   return (
     <div className="commerceShell checkoutShell">
       <DemoNotice />
@@ -58,7 +63,7 @@ export function CheckoutFlow(): ReactElement {
       <CheckoutProgress current={step} />
       <div className="checkoutLayout">
         <section className="checkoutPanel" ref={stepPanelRef}>{renderStep({ step, buyer, address, shippingId, submitting, setBuyer, setAddress, setShippingId, setStep, completeSimulation })}</section>
-        <CheckoutSummary quantity={item.quantity} subtotal={subtotal} shippingId={shippingId} />
+        <CheckoutSummary product={product} quantity={item.quantity} subtotal={subtotal} shippingId={shippingId} />
       </div>
     </div>
   );
@@ -174,7 +179,7 @@ function PaymentStep(props: Readonly<{ onBack: () => void; onNext: () => void }>
   return (
     <div className="checkoutForm paymentStep">
       <StepHeading icon={<LockKey size={24} weight="fill" />} label="03 · Pagamento" title="Pix, sem pagar nada." description="Esta etapa demonstra a confirmação visual. Não existe QR Code ou código bancário válido." />
-      <IntegrationStatus name="PayPix" detail="Nenhuma API, chave ou cobrança está conectada." enabled={commerceIntegrations.payPix} />
+      <IntegrationStatus name="Mercado Pago · Pix" detail="Nenhuma API, chave ou cobrança está conectada." enabled={commerceIntegrations.mercadoPagoPix} />
       <div className="demoPix"><LockKey size={34} weight="duotone" /><span>PIX DEMONSTRATIVO</span><strong>Nenhum QR Code ou código será gerado.</strong><p>A implementação real ficará isolada atrás do provedor de pagamento.</p></div>
       <StepActions back={props.onBack} nextLabel="Revisar pedido" onNext={props.onNext} />
     </div>
@@ -250,11 +255,11 @@ function StepActions({ back, nextLabel, onNext, disabled = false }: StepActionsP
   );
 }
 
-function CheckoutSummary(props: Readonly<{ quantity: number; subtotal: number; shippingId: ShippingId }>): ReactElement {
+function CheckoutSummary(props: Readonly<{ product: CatalogProduct; quantity: number; subtotal: number; shippingId: ShippingId }>): ReactElement {
   const shipping = shippingById(props.shippingId);
   const total = props.subtotal + shipping.priceCents;
   return (
-    <aside className="commerceSummary checkoutSummary"><span className="eyebrow">Resumo demonstrativo</span><div><span>{props.quantity}× {keychainProduct.name}</span><strong>{formatMoney(props.subtotal)}</strong></div><div><span>{shipping.name}</span><strong>{formatMoney(shipping.priceCents)}</strong></div><div className="summaryTotal"><span>Total simulado</span><strong>{formatMoney(total)}</strong></div><small>Valores ilustrativos. Nenhuma transação será iniciada.</small></aside>
+    <aside className="commerceSummary checkoutSummary"><span className="eyebrow">Resumo demonstrativo</span><div><span>{props.quantity}× {props.product.name}</span><strong>{formatMoney(props.subtotal)}</strong></div><div><span>{shipping.name}</span><strong>{formatMoney(shipping.priceCents)}</strong></div><div className="summaryTotal"><span>Total simulado</span><strong>{formatMoney(total)}</strong></div><small>Valores ilustrativos. Nenhuma transação será iniciada.</small></aside>
   );
 }
 

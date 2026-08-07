@@ -1,10 +1,14 @@
 import type { MetadataRoute } from "next";
-import { articles, categories, slugifyCategory } from "./lib/content";
+import { listPublicCategories, listPublishedArticles } from "@/server/public-content-service";
 
 const baseUrl = "https://blogdocarro.com";
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const staticRoutes = ["", "/sobre", "/contato", "/marketplace", "/loja", "/loja/chaveiro-presente"];
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const [articles, categories] = await Promise.all([
+    listPublishedArticles(),
+    listPublicCategories(),
+  ]);
+  const staticRoutes = ["", "/sobre", "/contato", "/marketplace", "/loja", "/loja/chaveiro-presente", "/privacidade", "/termos"];
   const staticEntries: MetadataRoute.Sitemap = staticRoutes.map((route) => ({
     url: `${baseUrl}${route}`,
     changeFrequency: route === "" ? "daily" : "weekly",
@@ -17,7 +21,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   }));
   const categoryEntries = categories.map((category) => ({
-    url: `${baseUrl}/categoria/${slugifyCategory(category)}`,
+    url: `${baseUrl}/categoria/${category.slug}`,
     changeFrequency: "weekly" as const,
     priority: 0.7,
   }));

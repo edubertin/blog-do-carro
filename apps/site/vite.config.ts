@@ -31,7 +31,6 @@ export default defineConfig(async () => {
       cloudflare({
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
         config: localBindingConfig,
-        persistState: false,
       }),
     ],
   };

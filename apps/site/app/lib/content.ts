@@ -15,6 +15,12 @@ export type Article = {
   faq: readonly { question: string; answer: string }[];
 };
 
+export type ArticleStatus = "draft" | "review" | "scheduled" | "published" | "archived";
+
+export type EditorialArticleRecord = Readonly<Article & {
+  status: ArticleStatus;
+}>;
+
 export type FeaturedVideo = {
   id: string;
   sourceTitle: string;
@@ -59,7 +65,7 @@ export const categoryGroups = [
   },
 ] as const;
 
-export const featuredVideos: readonly FeaturedVideo[] = [
+const featuredVideoRecords: readonly FeaturedVideo[] = [
   {
     id: "jT0j_rCgbbc",
     sourceTitle: "Esse senhor trocou sua moto numa Spin e financiou o restante",
@@ -98,8 +104,9 @@ export const featuredVideos: readonly FeaturedVideo[] = [
   },
 ];
 
-export const articles: readonly Article[] = [
+const publicEditorialRecords = [
   {
+    status: "published",
     slug: "moto-por-spin-financiada-bom-negocio",
     category: "Negociações",
     title: "Trocar uma moto por uma Spin financiada: foi bom negócio?",
@@ -121,6 +128,7 @@ export const articles: readonly Article[] = [
     ],
   },
   {
+    status: "published",
     slug: "negocio-de-gente-grande-troca-de-carros",
     category: "Negociações",
     title: "Negócio de gente grande: como avaliar uma troca de alto valor",
@@ -140,6 +148,7 @@ export const articles: readonly Article[] = [
     ],
   },
   {
+    status: "published",
     slug: "spin-de-leilao-na-troca-riscos",
     category: "Compra e Venda",
     title: "Spin de leilão na troca: quem realmente assume o risco?",
@@ -160,6 +169,7 @@ export const articles: readonly Article[] = [
     ],
   },
   {
+    status: "published",
     slug: "onix-por-versa-com-sinistro",
     category: "Compra e Venda",
     title: "Ônix por Versa com sinistro: economia ou cilada?",
@@ -181,6 +191,7 @@ export const articles: readonly Article[] = [
     ],
   },
   {
+    status: "published",
     slug: "detalhe-que-muda-valor-carro-na-troca",
     category: "Negociações",
     title: "O detalhe que muda o valor do seu carro na troca",
@@ -217,6 +228,7 @@ export const articles: readonly Article[] = [
     ],
   },
   {
+    status: "published",
     slug: "suvs-medios-mais-vendidos-julho-2026",
     category: "SUV",
     title: "SUVs médios: os modelos mais vendidos em julho de 2026",
@@ -241,6 +253,7 @@ export const articles: readonly Article[] = [
     ],
   },
   {
+    status: "published",
     slug: "combustiveis-precos-agosto-2026",
     category: "Mercado Automotivo",
     title: "Combustíveis: o que muda nos preços em agosto",
@@ -264,12 +277,26 @@ export const articles: readonly Article[] = [
       },
     ],
   },
-];
+] satisfies readonly EditorialArticleRecord[];
 
-export const primaryArticle = articles[0];
+export function selectPublishedArticles(records: readonly EditorialArticleRecord[]): readonly Article[] {
+  return records.flatMap(({ status, ...article }) => status === "published" ? [article] : []);
+}
 
-export function findArticle(slug: string): Article | undefined {
-  return articles.find((article) => article.slug === slug);
+export function findPublishedArticleIn(records: readonly EditorialArticleRecord[], slug: string): Article | undefined {
+  return selectPublishedArticles(records).find((article) => article.slug === slug);
+}
+
+export const publishedArticles = selectPublishedArticles(publicEditorialRecords);
+export const articles = publishedArticles;
+
+const publishedArticleSlugs = new Set(publishedArticles.map((article) => article.slug));
+export const featuredVideos = featuredVideoRecords.filter((video) => publishedArticleSlugs.has(video.articleSlug));
+
+export const primaryArticle = publishedArticles[0];
+
+export function findPublishedArticle(slug: string): Article | undefined {
+  return publishedArticles.find((article) => article.slug === slug);
 }
 
 export function slugifyCategory(category: string): string {

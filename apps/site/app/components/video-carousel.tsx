@@ -10,7 +10,7 @@ import { SiteLink as Link } from "@/app/components/site-link";
 import { useState } from "react";
 import type { PanInfo } from "motion/react";
 import type { ReactElement } from "react";
-import { featuredVideos } from "@/app/lib/content";
+import type { PublicFeaturedVideo } from "@/domain/public-content";
 
 function VideoActions({ videoId, articleSlug }: { videoId: string; articleSlug: string }) {
   return (
@@ -21,22 +21,30 @@ function VideoActions({ videoId, articleSlug }: { videoId: string; articleSlug: 
   );
 }
 
-function CarouselControls({ index, onMove, onSelect }: { index: number; onMove: (step: number) => void; onSelect: (index: number) => void }) {
+type CarouselControlsProps = Readonly<{
+  index: number;
+  videos: readonly PublicFeaturedVideo[];
+  onMove: (step: number) => void;
+  onSelect: (index: number) => void;
+}>;
+
+function CarouselControls({ index, videos, onMove, onSelect }: CarouselControlsProps) {
   return (
     <div className="carouselControls">
       <button type="button" onClick={() => onMove(-1)} aria-label="Vídeo anterior"><ArrowLeft size={18} weight="bold" /></button>
-      <div className="carouselDots">{featuredVideos.map((video, itemIndex) => <button className={itemIndex === index ? "active" : ""} type="button" onClick={() => onSelect(itemIndex)} aria-label={`Mostrar ${video.editorialTitle}`} aria-current={itemIndex === index} key={video.id} />)}</div>
-      <span>{String(index + 1).padStart(2, "0")} / {String(featuredVideos.length).padStart(2, "0")}</span>
+      <div className="carouselDots">{videos.map((video, itemIndex) => <button className={itemIndex === index ? "active" : ""} type="button" onClick={() => onSelect(itemIndex)} aria-label={`Mostrar ${video.editorialTitle}`} aria-current={itemIndex === index} key={video.id} />)}</div>
+      <span>{String(index + 1).padStart(2, "0")} / {String(videos.length).padStart(2, "0")}</span>
       <button type="button" onClick={() => onMove(1)} aria-label="Próximo vídeo"><ArrowRight size={18} weight="bold" /></button>
     </div>
   );
 }
 
-export function VideoCarousel(): ReactElement {
+export function VideoCarousel({ videos }: Readonly<{ videos: readonly PublicFeaturedVideo[] }>): ReactElement | null {
   const [index, setIndex] = useState(0);
-  const video = featuredVideos[index];
+  if (!videos.length) return null;
+  const video = videos[index] ?? videos[0];
   function move(step: number) {
-    setIndex((current) => (current + step + featuredVideos.length) % featuredVideos.length);
+    setIndex((current) => (current + step + videos.length) % videos.length);
   }
   function handleDragEnd(_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) {
     if (Math.abs(info.offset.x) > 52) move(info.offset.x < 0 ? 1 : -1);
@@ -56,7 +64,7 @@ export function VideoCarousel(): ReactElement {
           </div>
         </m.div>
       </AnimatePresence>
-      <CarouselControls index={index} onMove={move} onSelect={setIndex} />
+      <CarouselControls index={index} videos={videos} onMove={move} onSelect={setIndex} />
     </section>
   );
 }

@@ -28,7 +28,7 @@ Saudável para validação local. O fluxo completo funciona em navegador real, n
 
 5. **Pix demonstrativo — saudável**
    - Não há QR Code, código copiável ou botão “Pagar”.
-   - PayPix permanece desconectado e sem chamada de rede.
+   - Mercado Pago Pix permanece desconectado e sem chamada de rede.
    - Evidência: `output/playwright/checkout-audit/11-final-payment-390.png`.
 
 6. **Revisão — saudável**

@@ -13,6 +13,7 @@ npm run lint
 npm run typecheck
 npm run build
 npm run qa
+npm run test:e2e
 npm audit --omit=dev
 ```
 
@@ -23,7 +24,7 @@ npm audit --omit=dev
 - `/checkout`: identificação, entrega, Pix simulado e revisão.
 - `/pedido/demo/[id]`: confirmação local sem cobrança ou envio.
 
-Mercado Livre, PayPix e Meu Envio permanecem desconectados. O mock não usa APIs externas, banco ou credenciais.
+Mercado Livre, Mercado Pago Pix e Meu Envio permanecem desconectados. O mock não usa APIs externas, banco ou credenciais.
 
 ## Publicação
 

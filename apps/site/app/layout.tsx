@@ -1,21 +1,27 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "@fontsource/archivo/400.css";
 import "@fontsource/archivo/500.css";
 import "@fontsource/archivo/600.css";
 import "@fontsource/archivo/700.css";
 import "@fontsource/source-serif-4/600.css";
-import { SiteLink as Link } from "@/app/components/site-link";
 import type { ReactElement } from "react";
-import { BrandLogo } from "./components/brand-logo";
-import { SiteNavigation } from "./components/site-navigation";
-import { SiteProviders } from "./components/site-providers";
+import { RootChrome } from "./components/root-chrome";
+import { getCatalogProduct, getNavigationProjection } from "@/server/public-content-service";
 import "./globals.css";
 import "./commerce/commerce.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://blogdocarro.com"),
+  applicationName: "Blog do Carro",
   title: { default: "Blog do Carro — Negócios sobre rodas", template: "%s | Blog do Carro" },
   description: "Informação clara para comprar, vender e negociar seu próximo carro com confiança.",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [{ url: "/brand/blog-do-carro-icon.png", type: "image/png", sizes: "1254x1254" }],
+    shortcut: "/brand/blog-do-carro-icon.png",
+    apple: [{ url: "/brand/blog-do-carro-icon.png", type: "image/png", sizes: "1254x1254" }],
+  },
+  appleWebApp: { capable: true, title: "Blog do Carro", statusBarStyle: "black-translucent" },
   openGraph: {
     type: "website",
     locale: "pt_BR",
@@ -25,21 +31,19 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-function Footer(): ReactElement {
-  return (
-    <footer className="siteFooter">
-      <div className="footerBrand"><BrandLogo /><p>Negócios sobre rodas, explicados com clareza.</p></div>
-      <div className="footerLinks"><Link href="/sobre">Sobre</Link><Link href="/contato">Contato</Link><Link href="/privacidade">Privacidade</Link><Link href="/termos">Termos</Link></div>
-      <p className="copyright">© 2026 Blog do Carro. Todos os direitos reservados.</p>
-    </footer>
-  );
-}
+export const viewport: Viewport = {
+  themeColor: "#0D0D0D",
+};
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>): ReactElement {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>): Promise<ReactElement> {
+  const [navigation, product] = await Promise.all([
+    getNavigationProjection(),
+    getCatalogProduct("chaveiro-presente"),
+  ]);
   return (
     <html lang="pt-BR" data-scroll-behavior="smooth">
       <body>
-        <SiteProviders><SiteNavigation />{children}<Footer /></SiteProviders>
+        <RootChrome navigation={navigation} maximumCartQuantity={product?.maxPerCart ?? 1}>{children}</RootChrome>
       </body>
     </html>
   );
