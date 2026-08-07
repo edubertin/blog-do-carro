@@ -12,7 +12,14 @@ const MAX_OWNER_ENTRIES = 32;
 const MAX_DISPLAY_NAME_LENGTH = 120;
 const EMAIL_PATTERN = /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/u;
 
-export type AdminRole = "owner";
+export type AdminRole =
+  | "owner"
+  | "editor"
+  | "publisher"
+  | "commerce_operator"
+  | "support"
+  | "analyst"
+  | "integrations_admin";
 
 export type AdminPermission =
   | "content.read"
@@ -175,9 +182,26 @@ export function resolveForwardedAdminAccess(headers: HeaderReader): AdminAccess 
 }
 
 export function hasAdminPermission(identity: AdminIdentity, permission: AdminPermission): boolean {
-  void permission;
-  return identity.role === "owner";
+  return rolePermissions[identity.role].includes(permission);
 }
+
+const allAdminPermissions = [
+  "content.read", "content.write", "content.review", "content.publish",
+  "home.read", "home.write", "home.publish", "catalog.read", "catalog.write",
+  "catalog.activate", "orders.read", "orders.update", "customer_pii.read",
+  "analytics.read", "connectors.read", "connectors.test", "connectors.activate",
+  "flags.read", "flags.change", "admin_users.manage", "audit.read",
+] satisfies readonly AdminPermission[];
+
+const rolePermissions: Readonly<Record<AdminRole, readonly AdminPermission[]>> = {
+  owner: allAdminPermissions,
+  editor: ["content.read", "content.write", "content.review", "home.read"],
+  publisher: ["content.read", "content.review", "content.publish", "home.read", "home.write", "home.publish"],
+  commerce_operator: ["catalog.read", "catalog.write", "catalog.activate", "orders.read", "orders.update"],
+  support: ["orders.read", "orders.update", "customer_pii.read"],
+  analyst: ["content.read", "catalog.read", "analytics.read"],
+  integrations_admin: ["connectors.read", "connectors.test", "connectors.activate", "flags.read"],
+};
 
 function safeReturnPath(candidate: string, fallback: string): string {
   if (!candidate.startsWith("/") || candidate.startsWith("//") || candidate.includes("\\")) return fallback;

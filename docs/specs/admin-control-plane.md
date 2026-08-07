@@ -4,7 +4,7 @@
 
 Definir o painel administrativo do Blog do Carro como uma superfície única para conteúdo, home, menu, loja, pedidos, analytics, conexões e segurança, preservando três fronteiras:
 
-1. o mock visual não persiste nem executa ações externas;
+1. o CMS persiste artigos, produtos, composição da home e menu no D1; as demais ações continuam sem efeito externo;
 2. a implementação real autoriza toda ação no servidor;
 3. valores de credenciais nunca entram no painel, no D1, no HTML ou no bundle do navegador.
 

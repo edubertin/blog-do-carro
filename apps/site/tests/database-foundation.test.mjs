@@ -3,14 +3,16 @@ import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 
-const migrationSql = readFileSync(new URL("../drizzle/0001_d1_foundation.sql", import.meta.url), "utf8");
+const foundationMigrationSql = readFileSync(new URL("../drizzle/0001_d1_foundation.sql", import.meta.url), "utf8");
+const cmsMigrationSql = readFileSync(new URL("../drizzle/0002_cms_media.sql", import.meta.url), "utf8");
 const seedSql = readFileSync(new URL("../drizzle/0001_foundation_seed.sql", import.meta.url), "utf8");
 const hostingConfig = JSON.parse(readFileSync(new URL("../.openai/hosting.json", import.meta.url), "utf8"));
 
 function foundationDatabase() {
   const database = new DatabaseSync(":memory:");
-  database.exec(migrationSql);
+  database.exec(foundationMigrationSql);
   database.exec(seedSql);
+  database.exec(cmsMigrationSql);
   return database;
 }
 
@@ -32,6 +34,7 @@ test("applies the D1 foundation migration to an empty SQLite database", () => {
     "connector_configurations",
     "audit_events",
     "idempotency_records",
+    "media_assets",
   ]) {
     assert.ok(tables.includes(table), `missing table ${table}`);
   }
@@ -93,9 +96,18 @@ test("preserves unknown publication dates and normalized public search fields", 
   assert.ok(productColumns.some((column) => column.name === "primary_image_alt" && column.notnull === 1));
 });
 
-test("keeps the hosted D1 binding disabled and fixtures free of credentials or PII", () => {
-  assert.equal(hostingConfig.d1, null);
+test("declares logical Sites bindings without credentials or PII", () => {
+  assert.equal(hostingConfig.d1, "DB");
+  assert.equal(hostingConfig.r2, "MEDIA");
   assert.doesNotMatch(seedSql, /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/iu);
   assert.doesNotMatch(seedSql, /(?:api[_-]?key|access[_-]?token|private[_-]?key|password)\s*[=:]/iu);
   assert.doesNotMatch(seedSql, /(?:sk|pk)_(?:live|test)_[A-Za-z0-9]+/u);
+});
+
+test("upgrades existing editorial rows and constrains staged media", () => {
+  const database = foundationDatabase();
+  const revision = database.prepare("SELECT version, updated_at FROM article_revisions WHERE id = 'rev_moto_spin_001'").get();
+  assert.deepEqual({ ...revision }, { version: 1, updated_at: 0 });
+  database.exec("INSERT INTO media_assets (id, object_key, content_type, byte_size, alt_text, lifecycle_state, created_at, updated_at) VALUES ('media-1', 'staged/media-1.webp', 'image/webp', 1200, 'Imagem de teste', 'staged', 1, 1)");
+  assert.throws(() => database.exec("INSERT INTO media_assets (id, object_key, content_type, byte_size, alt_text, lifecycle_state, created_at, updated_at) VALUES ('media-2', 'staged/media-2.svg', 'image/svg+xml', 1200, 'SVG', 'staged', 1, 1)"));
 });

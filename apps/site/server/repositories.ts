@@ -13,6 +13,7 @@ import {
   publishedArticles,
   slugifyCategory,
 } from "../app/lib/content";
+import { getRuntimeDatabase, isPublicD1ReadEnabled } from "./runtime-bindings";
 
 const navigationItems = [
   { label: "Início", href: "/" },
@@ -54,13 +55,12 @@ const fixtureSeed = {
   navigationItems,
 } satisfies FoundationRepositorySeed;
 
-const repositories = createDataRepositories({
-  mode: "disabled",
-  fixtureSeed,
-});
-
 export function getDataRepositories(): DataRepositories {
-  return repositories;
+  const database = getRuntimeDatabase();
+  const mode = database && isPublicD1ReadEnabled() ? "d1-preview" : "disabled";
+  return createDataRepositories({ mode, database: database ?? undefined, fixtureSeed });
 }
 
-export const activePersistenceMode = "fixtures" as const;
+export function activePersistenceMode(): "fixtures" | "d1-preview" {
+  return getRuntimeDatabase() && isPublicD1ReadEnabled() ? "d1-preview" : "fixtures";
+}

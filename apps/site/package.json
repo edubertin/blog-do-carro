@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit --incremental false",
     "test": "npm run build && npm run test:db && npm run test:rendered",
     "test:db": "node --test tests/database-foundation.test.mjs",
-    "test:rendered": "node --test tests/rendered-html.test.mjs",
+    "test:rendered": "node --import ./tests/cloudflare-workers-loader.mjs --test tests/rendered-html.test.mjs",
     "test:e2e": "npm run build && playwright test",
     "qa": "npm run lint && npm run typecheck && npm run build && npm run test:db && npm run test:rendered"
   },

@@ -1,6 +1,6 @@
 # Spec — Fundação local do D1
 
-- Status: **implementada localmente, binding desativado**
+- Status: **bindings declarados, capacidades hospedadas desativadas por flags**
 - Data: **2026-08-06**
 
 ## Objetivo
@@ -78,4 +78,4 @@ O modelo conceitual dessas áreas permanece nas specs existentes. A migration co
 7. migrar conteúdo atual para projeção publicada com timestamps verificados;
 8. ativar CRUD editorial por flag server-side.
 
-Produção, R2 e comércio continuam fora desta entrega.
+Produção pública continua em fixtures. O binding R2 existe somente para mídia staged autorizada; comércio continua fora desta entrega. Consulte o ADR 0007.

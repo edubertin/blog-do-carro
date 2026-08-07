@@ -17,7 +17,14 @@ export type RuntimeInventory = Readonly<{
 export type RuntimeEnvironment = Readonly<Record<string, unknown>>;
 
 const environmentKeyPattern = /^[A-Z][A-Z0-9_]*$/u;
-const foundationKeys = ["ADMIN_OWNER_USER_IDS", "ADMIN_EMAIL_BOOTSTRAP_ENABLED"] as const;
+const foundationKeys = [
+  "ADMIN_OWNER_USER_IDS",
+  "ADMIN_EMAIL_BOOTSTRAP_ENABLED",
+  "ADMIN_SUBJECT_HMAC_KEY",
+  "CMS_WRITE_ENABLED",
+  "CMS_PUBLIC_READ_ENABLED",
+  "MEDIA_UPLOAD_ENABLED",
+] as const;
 
 function uniqueEnvironmentKeys(): readonly string[] {
   const connectorKeys = adminConnectors.flatMap((connector) => [

@@ -172,10 +172,10 @@ A especificação completa do painel, RBAC, audit log, conectores e limites do m
 
 - Fase 0 implementada e estabilizada no runtime Vinext/Sites.
 - Build empacota o worker, assets e `.openai/hosting.json`.
-- D1 e R2 permanecem `null`; não existe efeito externo de pagamento ou envio.
-- O primeiro migration D1 e seu seed não sensível estão versionados e passam em SQLite efêmero; nenhum binding foi criado ou aplicado.
+- Bindings lógicos D1/R2 estão declarados; leitura pública, escrita hospedada e upload permanecem desligados por flags independentes. Não existe efeito externo de pagamento ou envio.
+- As migrations D1 e o seed não sensível estão versionados, passam em SQLite efêmero e são exercitados no runtime local.
 - Carrossel, conteúdo editorial, busca, loja e checkout demonstrativo consomem contratos server-side e estão prontos para validação visual.
-- O mock administrativo local cobre todas as rotas da matriz com fronteira SIWC/owner, sem persistência real, secrets ou chamadas externas.
+- O CMS administrativo persiste artigos, produtos, composição da home e menu no D1 local, com fronteira SIWC/owner, audit log e nenhuma chamada externa.
 - A projeção pública já alimenta home, navegação, artigo, relacionados, categorias, sitemap e catálogo; corpos editoriais e SQL não entram nos chunks do navegador.
 - Próximo corte recomendado: validar o adapter D1 em preview isolado e implementar o publicador transacional antes de qualquer CRUD real.
 
