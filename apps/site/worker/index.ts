@@ -4,6 +4,12 @@ import {
   handleImageOptimization,
 } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import {
+  ADMIN_AUTHORIZED_HEADER,
+  LOCAL_PREVIEW_HEADER,
+} from "../app/admin/admin-auth-core";
+import { adminGateResponse, isLocalPreviewUrl, isProtectedAdminPath } from "./admin-access";
+import type { AdminAuthEnvironment } from "./admin-access";
 
 interface ImagesBinding {
   input(stream: ReadableStream): {
@@ -17,7 +23,7 @@ interface AssetFetcher {
   fetch(request: Request): Promise<Response>;
 }
 
-interface Env {
+interface Env extends AdminAuthEnvironment {
   ASSETS?: AssetFetcher;
   IMAGES?: ImagesBinding;
 }
@@ -28,14 +34,6 @@ interface ExecutionContext {
 }
 
 const imageOptimizationPaths = new Set(["/_next/image", "/_vinext/image"]);
-
-function isLocalRequest(url: URL): boolean {
-  return url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
-}
-
-function isAdminPath(pathname: string): boolean {
-  return pathname === "/admin" || pathname.startsWith("/admin/");
-}
 
 function hardenAdminResponse(response: Response): Response {
   const headers = new Headers(response.headers);
@@ -78,12 +76,24 @@ function fetchSourceAsset(path: string, request: Request, assets?: AssetFetcher)
   return assets ? assets.fetch(assetRequest) : fetch(assetRequest);
 }
 
+function adminHandlerRequest(request: Request, url: URL): Request {
+  const headers = new Headers(request.headers);
+  headers.delete(LOCAL_PREVIEW_HEADER);
+  headers.delete(ADMIN_AUTHORIZED_HEADER);
+  headers.set(ADMIN_AUTHORIZED_HEADER, "owner");
+  if (isLocalPreviewUrl(url)) headers.set(LOCAL_PREVIEW_HEADER, "1");
+  if (request.method === "GET" || request.method === "HEAD") {
+    return new Request(request.url, { method: request.method, headers, redirect: request.redirect });
+  }
+  return new Request(request, { headers });
+}
+
 const worker = {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: Env | undefined, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const requestId = requestIdFor(request);
     try {
-      const response = await handleRequest(request, env, ctx, url);
+      const response = await handleRequest(request, env ?? {}, ctx, url);
       return withRequestId(response, requestId);
     } catch (error) {
       reportFailure(error, requestId, routeClass(url.pathname));
@@ -93,7 +103,7 @@ const worker = {
 };
 
 function routeClass(pathname: string): string {
-  if (isAdminPath(pathname)) return "admin";
+  if (isProtectedAdminPath(pathname)) return "admin";
   return imageOptimizationPaths.has(pathname) ? "image" : "public";
 }
 
@@ -103,9 +113,10 @@ async function handleRequest(
   ctx: ExecutionContext,
   url: URL,
 ): Promise<Response> {
-  if (isAdminPath(url.pathname)) {
-    if (!isLocalRequest(url)) return new Response("Not found", { status: 404 });
-    return hardenAdminResponse(await handler.fetch(request, env, ctx));
+  if (isProtectedAdminPath(url.pathname)) {
+    const denied = adminGateResponse(request, env, url);
+    if (denied) return hardenAdminResponse(denied);
+    return hardenAdminResponse(await handler.fetch(adminHandlerRequest(request, url), env, ctx));
   }
   if (!imageOptimizationPaths.has(url.pathname)) return handler.fetch(request, env, ctx);
 

@@ -1,7 +1,9 @@
 import type { ReactElement } from "react";
 import { auditEvents } from "../admin-data";
+import { requireAdminPage } from "../admin-auth";
 import { AdminCard, AdminPageHeader, MetricCard } from "../admin-ui";
 import { MockAction } from "../mock-action";
+import type { AdminIdentity } from "../admin-auth-core";
 
 const roles = [
   { name: "Owner", scope: "Usuários, flags, conectores e auditoria" },
@@ -24,8 +26,25 @@ function SecurityGates(): ReactElement {
   );
 }
 
-export default function SecurityPage(): ReactElement {
+function CurrentIdentity({ actorId, displayName, localPreview }: AdminIdentity): ReactElement {
   return (
-    <><AdminPageHeader eyebrow="Segurança" title="Acesso e auditoria" description="A tela descreve a fronteira futura. Ainda não há sessão, usuário, permissão ou credencial ativa." action={<MockAction label="Revisar sessão (simulado)" message="Nenhuma sessão administrativa existe neste mock." />} /><div className="adminGrid adminGrid--metrics"><MetricCard label="Admin autenticado" value="Não" detail="mock local" tone="warning" /><MetricCard label="RBAC" value="0" detail="papéis ativos" /><MetricCard label="Secrets no painel" value="0" detail="por desenho" tone="positive" /><MetricCard label="Audit log real" value="Não" detail="fixtures abaixo" /></div><div className="adminGrid adminGrid--split" style={{ marginTop: 14 }}><RoleMatrix /><SecurityGates /></div><div style={{ marginTop: 14 }}><AuditPreview /></div></>
+    <AdminCard title="Identidade desta sessão" eyebrow="Sites SIWC">
+      <div className="adminSecretList">
+        <div className="adminSecretRow"><code>Nome</code><span>{displayName}</span></div>
+        <div className="adminSecretRow"><code>ID estável do Sites</code><span>{localPreview ? "disponível no preview publicado" : actorId}</span></div>
+        <div className="adminSecretRow"><code>Papel atual</code><span>owner</span></div>
+      </div>
+      <div className="adminCallout">Use o ID exibido aqui para concluir o provisionamento server-side. Ele não é senha nem token.</div>
+    </AdminCard>
+  );
+}
+
+export default async function SecurityPage(): Promise<ReactElement> {
+  const identity = await requireAdminPage("audit.read");
+  if (!identity) return <></>;
+  const sessionValue = identity.localPreview ? "Prévia" : "Sim";
+  const sessionDetail = identity.localPreview ? "loopback local" : "Sites SIWC";
+  return (
+    <><AdminPageHeader eyebrow="Segurança" title="Acesso e auditoria" description="A identidade e a autorização já são validadas no servidor. Papéis adicionais e auditoria persistente continuam desativados." action={<MockAction label="Revisar acesso" message="A revisão é somente visual. Nenhuma permissão foi alterada." />} /><div className="adminGrid adminGrid--metrics"><MetricCard label="Admin autenticado" value={sessionValue} detail={sessionDetail} tone="positive" /><MetricCard label="RBAC" value="1" detail="owner ativo" /><MetricCard label="Secrets no painel" value="0" detail="por desenho" tone="positive" /><MetricCard label="Audit log real" value="Não" detail="fixtures abaixo" /></div><div className="adminGrid adminGrid--split" style={{ marginTop: 14 }}><CurrentIdentity {...identity} /><SecurityGates /></div><div className="adminGrid adminGrid--split" style={{ marginTop: 14 }}><RoleMatrix /><AuditPreview /></div></>
   );
 }

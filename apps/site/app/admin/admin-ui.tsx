@@ -21,11 +21,11 @@ export function AdminPageHeader(props: HeaderProps): ReactElement {
   );
 }
 
-export function DemoBanner(): ReactElement {
+export function DemoBanner({ localPreview }: Readonly<{ localPreview: boolean }>): ReactElement {
   return (
     <div className="adminDemoBanner" role="note">
       <Info size={20} weight="fill" aria-hidden="true" />
-      <div><strong>Demonstração local</strong><span>Nenhuma alteração é salva. Não cole senhas, tokens, chaves ou dados reais.</span></div>
+      <div><strong>{localPreview ? "Demonstração local" : "Sessão SIWC protegida"}</strong><span>Nenhuma alteração é salva. Não cole senhas, tokens, chaves ou dados reais.</span></div>
     </div>
   );
 }

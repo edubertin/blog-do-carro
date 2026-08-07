@@ -31,6 +31,32 @@
 .adminSkipLink:focus { transform: translateY(0); }
 .adminSidebar { display: none; }
 
+.adminAccessScreen {
+  min-height: 100svh;
+  padding: 24px;
+  display: grid;
+  place-items: center;
+  color: #f7f7f4;
+  background: #0b0b0b;
+}
+
+.adminAccessCard {
+  width: min(100%, 520px);
+  padding: clamp(24px, 7vw, 44px);
+  display: grid;
+  gap: 15px;
+  background: #141414;
+  border: 1px solid #2a2a2a;
+  border-radius: 24px;
+}
+
+.adminAccessCard .brandLogo { width: 180px; margin-bottom: 15px; }
+.adminAccessCard > span { color: #f4b400; font-size: .64rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.adminAccessCard h1 { font-family: "Source Serif 4", Georgia, serif; font-size: clamp(2rem, 9vw, 3.4rem); line-height: 1; letter-spacing: -.045em; }
+.adminAccessCard p { color: #999995; font-size: .76rem; line-height: 1.6; }
+.adminAccessExit { width: fit-content; min-height: 46px; margin-top: 8px; padding: 0 16px; display: inline-flex; align-items: center; color: #0d0d0d; background: #f4b400; border-radius: 13px; font-size: .7rem; font-weight: 700; }
+.adminAccessExit:focus-visible { outline: 3px solid #f4b400; outline-offset: 3px; }
+
 .adminMobileHeader {
   position: sticky;
   z-index: 70;
@@ -369,6 +395,19 @@ body:has(.adminDrawerLayer[data-open="true"]) { overflow: hidden; }
 .adminNavLink svg { flex: 0 0 auto; }
 .adminNavLink.isActive { color: #0d0d0d; background: var(--admin-brand); font-weight: 700; }
 
+.adminSession {
+  margin-top: 20px;
+  padding: 14px 10px 0;
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid #292929;
+}
+
+.adminSession > span { color: var(--admin-brand); font-size: .55rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.adminSession > strong { overflow: hidden; color: #d5d5cf; font-size: .67rem; text-overflow: ellipsis; white-space: nowrap; }
+.adminSession > div { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.adminSession a { min-height: 36px; display: inline-flex; align-items: center; gap: 7px; color: #999995; font-size: .63rem; font-weight: 600; }
+
 .adminBottomNav {
   position: fixed;
   z-index: 80;
@@ -503,7 +542,7 @@ body:has(.adminDrawerLayer[data-open="true"]) { overflow: hidden; }
   .adminSidebar .adminBrand { padding: 0 9px 20px; border-bottom: 1px solid #292929; }
   .adminSidebar .adminBrand > .adminBrandLabel { display: inline; }
   .adminSidebar .adminNavigation { flex: 1; overflow-y: auto; padding-right: 3px; }
-  .adminPortalLink { min-height: 44px; padding: 0 11px; display: flex; align-items: center; gap: 9px; color: #8c8c8c; border-top: 1px solid #292929; font-size: .68rem; }
+  .adminSidebar .adminSession { margin-top: auto; }
   .adminMobileHeader, .adminBottomNav, .adminDrawerLayer { display: none; }
   .adminMain { min-height: 100svh; padding: 28px 36px 70px; }
   .adminDemoBanner { max-width: 840px; }

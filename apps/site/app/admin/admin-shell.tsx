@@ -10,6 +10,7 @@ import { Package } from "@phosphor-icons/react/Package";
 import { PlugsConnected } from "@phosphor-icons/react/PlugsConnected";
 import { ShieldCheck } from "@phosphor-icons/react/ShieldCheck";
 import { ShoppingCart } from "@phosphor-icons/react/ShoppingCart";
+import { SignOut } from "@phosphor-icons/react/SignOut";
 import { Storefront } from "@phosphor-icons/react/Storefront";
 import { X } from "@phosphor-icons/react/X";
 import { usePathname } from "next/navigation";
@@ -81,11 +82,37 @@ function AdminBrand(): ReactElement {
   return <Link className="adminBrand" href="/admin" aria-label="Central Blog do Carro"><BrandLogo eager /><span className="adminBrandLabel">Central</span></Link>;
 }
 
-function DesktopSidebar({ pathname }: { pathname: string }): ReactElement {
-  return <aside className="adminSidebar"><AdminBrand /><NavigationGroups pathname={pathname} /><Link className="adminPortalLink" href="/"><ArrowSquareOut size={18} />Ver portal</Link></aside>;
+type SessionProps = Readonly<{
+  displayName: string;
+  exitHref: string;
+  localPreview: boolean;
+  onNavigate?: () => void;
+}>;
+
+function AdminSession({ displayName, exitHref, localPreview, onNavigate }: SessionProps): ReactElement {
+  return (
+    <div className="adminSession">
+      <span>{localPreview ? "Prévia local · owner" : "Sessão ativa · owner"}</span>
+      <strong>{displayName}</strong>
+      <div>
+        <Link href="/" onClick={onNavigate}><ArrowSquareOut size={18} />Ver portal</Link>
+        <Link href={exitHref} onClick={onNavigate}><SignOut size={18} />Sair</Link>
+      </div>
+    </div>
+  );
 }
 
-function MobileDrawer({ open, pathname, onClose }: Readonly<{ open: boolean; pathname: string; onClose: () => void }>): ReactElement {
+function DesktopSidebar(props: Readonly<{ pathname: string } & SessionProps>): ReactElement {
+  return <aside className="adminSidebar"><AdminBrand /><NavigationGroups pathname={props.pathname} /><AdminSession {...props} /></aside>;
+}
+
+type MobileDrawerProps = Readonly<{
+  open: boolean;
+  pathname: string;
+  onClose: () => void;
+}> & SessionProps;
+
+function MobileDrawer({ open, pathname, onClose, ...session }: MobileDrawerProps): ReactElement {
   const closeRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -98,27 +125,35 @@ function MobileDrawer({ open, pathname, onClose }: Readonly<{ open: boolean; pat
     document.addEventListener("keydown", handleKeyDown);
     return () => { document.removeEventListener("keydown", handleKeyDown); setAdminBackgroundAccessibility(false); returnTarget?.focus(); };
   }, [onClose, open]);
-  return <div className="adminDrawerLayer" data-open={open} aria-hidden={!open}><button className="adminDrawerBackdrop" type="button" tabIndex={-1} aria-label="Fechar navegação" onClick={onClose} /><aside className="adminDrawer" ref={drawerRef} role="dialog" aria-modal="true" aria-label="Navegação administrativa"><div className="adminDrawerHeader"><AdminBrand /><button ref={closeRef} type="button" aria-label="Fechar menu" onClick={onClose}><X size={22} weight="bold" /></button></div><NavigationGroups pathname={pathname} onNavigate={onClose} /></aside></div>;
+  return <div className="adminDrawerLayer" data-open={open} aria-hidden={!open}><button className="adminDrawerBackdrop" type="button" tabIndex={-1} aria-label="Fechar navegação" onClick={onClose} /><aside className="adminDrawer" ref={drawerRef} role="dialog" aria-modal="true" aria-label="Navegação administrativa"><div className="adminDrawerHeader"><AdminBrand /><button ref={closeRef} type="button" aria-label="Fechar menu" onClick={onClose}><X size={22} weight="bold" /></button></div><NavigationGroups pathname={pathname} onNavigate={onClose} /><AdminSession {...session} onNavigate={onClose} /></aside></div>;
 }
 
-function MobileHeader({ open, onOpen }: Readonly<{ open: boolean; onOpen: () => void }>): ReactElement {
-  return <header className="adminMobileHeader"><AdminBrand /><div><span>Modo demo</span><button type="button" aria-label="Abrir navegação administrativa" aria-expanded={open} onClick={onOpen}><List size={23} weight="bold" /></button></div></header>;
+function MobileHeader({ open, localPreview, onOpen }: Readonly<{ open: boolean; localPreview: boolean; onOpen: () => void }>): ReactElement {
+  return <header className="adminMobileHeader"><AdminBrand /><div><span>{localPreview ? "Prévia local" : "Owner"}</span><button type="button" aria-label="Abrir navegação administrativa" aria-expanded={open} onClick={onOpen}><List size={23} weight="bold" /></button></div></header>;
 }
 
 function MobileNavigation({ pathname }: { pathname: string }): ReactElement {
   return <nav className="adminBottomNav" aria-label="Atalhos administrativos">{mobileItems.map((item) => <NavigationLink item={item} pathname={pathname} key={item.href} />)}</nav>;
 }
 
-export function AdminShell({ children }: Readonly<{ children: ReactNode }>): ReactElement {
+type AdminShellProps = Readonly<{
+  children: ReactNode;
+  displayName: string;
+  exitHref: string;
+  localPreview: boolean;
+}>;
+
+export function AdminShell({ children, displayName, exitHref, localPreview }: AdminShellProps): ReactElement {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const session = { displayName, exitHref, localPreview };
   return (
     <div className="adminShell">
       <a className="adminSkipLink" href="#admin-content">Pular para o conteúdo</a>
-      <DesktopSidebar pathname={pathname} />
-      <MobileHeader open={drawerOpen} onOpen={() => setDrawerOpen(true)} />
-      <MobileDrawer open={drawerOpen} pathname={pathname} onClose={() => setDrawerOpen(false)} />
-      <main className="adminMain" id="admin-content"><DemoBanner />{children}</main>
+      <DesktopSidebar pathname={pathname} {...session} />
+      <MobileHeader open={drawerOpen} localPreview={localPreview} onOpen={() => setDrawerOpen(true)} />
+      <MobileDrawer open={drawerOpen} pathname={pathname} onClose={() => setDrawerOpen(false)} {...session} />
+      <main className="adminMain" id="admin-content"><DemoBanner localPreview={localPreview} />{children}</main>
       <MobileNavigation pathname={pathname} />
     </div>
   );

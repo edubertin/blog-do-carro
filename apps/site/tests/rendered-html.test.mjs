@@ -37,12 +37,12 @@ function editorialFixture(status, slug) {
   };
 }
 
-async function loadContentModule() {
+async function loadTypescriptModule(relativePath) {
   const [{ readFile }, typescriptModule] = await Promise.all([
     import("node:fs/promises"),
     import("typescript"),
   ]);
-  const sourceUrl = new URL("../app/lib/content.ts", import.meta.url);
+  const sourceUrl = new URL(relativePath, import.meta.url);
   const source = await readFile(sourceUrl, "utf8");
   const output = typescriptModule.default.transpileModule(source, {
     compilerOptions: {
@@ -52,6 +52,14 @@ async function loadContentModule() {
   }).outputText;
   const moduleUrl = `data:text/javascript;base64,${Buffer.from(output).toString("base64")}`;
   return import(moduleUrl);
+}
+
+async function loadContentModule() {
+  return loadTypescriptModule("../app/lib/content.ts");
+}
+
+async function loadAdminAuthCore() {
+  return loadTypescriptModule("../app/admin/admin-auth-core.ts");
 }
 
 const htmlRoutes = [
@@ -114,6 +122,16 @@ test("serves crawler metadata", async () => {
   assert.doesNotMatch(sitemapText, new RegExp(draftArticleSlug, "i"));
 });
 
+test("exposes the approved BDC icon and future PWA manifest metadata", async () => {
+  const worker = await loadWorker();
+  const home = await fetchRoute(worker, "/");
+  const html = await home.text();
+  assert.match(html, /rel="manifest" href="\/manifest\.webmanifest"/i);
+  assert.match(html, /rel="icon"[^>]+blog-do-carro-icon\.png/i);
+  assert.match(html, /rel="apple-touch-icon"[^>]+blog-do-carro-icon\.png/i);
+  assert.match(html, /name="theme-color" content="#0D0D0D"/i);
+});
+
 test("projects only published editorial records", async () => {
   const { findPublishedArticleIn, selectPublishedArticles } = await loadContentModule();
   const records = [
@@ -152,9 +170,168 @@ test("keeps the administrative mock local and non-cacheable", async () => {
   assert.equal(localAdmin.headers.get("x-frame-options"), "DENY");
   assert.match(localHtml, /name="robots" content="noindex, nofollow/i);
   assert.match(localHtml, /Não cole senhas, tokens, chaves ou dados reais/i);
+  assert.match(localHtml, /Prévia local/i);
+});
 
-  const publicAdmin = await worker.fetch(new Request("https://blogdocarro.com/admin"), environment, context);
-  assert.equal(publicAdmin.status, 404);
+test("gates the hosted admin through SIWC and a server-side owner bootstrap", async () => {
+  const worker = await loadWorker();
+  const configuredEnvironment = { ...environment, ADMIN_OWNER_USER_IDS: '["owner-alpha"]' };
+  const anonymous = await worker.fetch(
+    new Request("https://blogdocarro.com/admin/artigos?status=draft", {
+      headers: { "x-blog-do-carro-admin-authorized": "owner" },
+    }),
+    configuredEnvironment,
+    context,
+  );
+  assert.equal(anonymous.status, 307);
+  assert.equal(
+    anonymous.headers.get("location"),
+    "https://blogdocarro.com/signin-with-chatgpt?return_to=%2Fadmin%2Fartigos%3Fstatus%3Ddraft",
+  );
+  assert.equal(anonymous.headers.get("cache-control"), "private, no-store");
+
+  const misconfigured = await worker.fetch(
+    new Request("https://blogdocarro.com/admin"),
+    environment,
+    context,
+  );
+  assert.equal(misconfigured.status, 503);
+
+  const denied = await worker.fetch(new Request("https://blogdocarro.com/admin", {
+    headers: { "oai-authenticated-user-id": "unknown-owner" },
+  }), configuredEnvironment, context);
+  assert.equal(denied.status, 403);
+
+  const allowed = await worker.fetch(new Request("https://blogdocarro.com/admin", {
+    headers: {
+      "oai-authenticated-user-id": "owner-alpha",
+      "oai-authenticated-user-full-name": "Owner%20de%20Teste",
+      "oai-authenticated-user-full-name-encoding": "percent-encoded-utf-8",
+    },
+  }), configuredEnvironment, context);
+  assert.equal(allowed.status, 200);
+  assert.match(await allowed.text(), /Sessão SIWC protegida/i);
+
+  const securityPage = await worker.fetch(new Request("https://blogdocarro.com/admin/seguranca", {
+    headers: {
+      "oai-authenticated-user-id": "owner-alpha",
+      "oai-authenticated-user-full-name": "Owner%20de%20Teste",
+      "oai-authenticated-user-full-name-encoding": "percent-encoded-utf-8",
+    },
+  }), configuredEnvironment, context);
+  assert.equal(securityPage.status, 200);
+  const securityHtml = await securityPage.text();
+  assert.match(securityHtml, /ID estável do Sites/i);
+  assert.match(securityHtml, /owner-alpha/i);
+
+  const apiAnonymous = await worker.fetch(
+    new Request("https://blogdocarro.com/api/admin/orders"),
+    configuredEnvironment,
+    context,
+  );
+  assert.equal(apiAnonymous.status, 401);
+});
+
+test("authorizes admin owners by stable Sites user ID", async () => {
+  const { resolveAdminAccess } = await loadAdminAuthCore();
+  const bootstrap = { userIds: JSON.stringify(["owner-alpha", "owner-beta"]) };
+  const allowedHeaders = new Headers({
+    "oai-authenticated-user-id": "owner-beta",
+    "oai-authenticated-user-full-name": "Pessoa%20Autorizada",
+    "oai-authenticated-user-full-name-encoding": "percent-encoded-utf-8",
+  });
+  const allowed = resolveAdminAccess(allowedHeaders, "blogdocarro.com", bootstrap);
+  assert.equal(allowed.kind, "allowed");
+  assert.equal(allowed.identity.actorId, "owner-beta");
+  assert.equal(allowed.identity.displayName, "Pessoa Autorizada");
+  assert.equal(allowed.identity.localPreview, false);
+
+  const denied = resolveAdminAccess(
+    new Headers({ "oai-authenticated-user-id": "unknown-owner" }),
+    "blogdocarro.com",
+    bootstrap,
+  );
+  assert.equal(denied.kind, "denied");
+});
+
+test("supports the temporary normalized owner email bootstrap without exposing it as actor ID", async () => {
+  const { resolveAdminAccess } = await loadAdminAuthCore();
+  const access = resolveAdminAccess(
+    new Headers({
+      "oai-authenticated-user-id": "stable-sites-subject",
+      "oai-authenticated-user-email": "  OWNER@EXAMPLE.COM ",
+    }),
+    "blogdocarro.com",
+    { emailAllowlist: "Owner@Example.com", emailBootstrapEnabled: true },
+  );
+  assert.equal(access.kind, "allowed");
+  assert.equal(access.identity.actorId, "stable-sites-subject");
+  assert.equal(access.identity.displayName, "Administrador");
+});
+
+test("fails closed when owner bootstrap or stable Sites identity is absent", async () => {
+  const { resolveAdminAccess } = await loadAdminAuthCore();
+  const identity = new Headers({ "oai-authenticated-user-id": "owner-alpha" });
+  assert.equal(resolveAdminAccess(identity, "blogdocarro.com", {}).kind, "misconfigured");
+  assert.equal(resolveAdminAccess(new Headers(), "blogdocarro.com", { userIds: "owner-alpha" }).kind, "anonymous");
+  const emailOnly = new Headers({ "oai-authenticated-user-email": "owner@example.com" });
+  assert.equal(resolveAdminAccess(emailOnly, "blogdocarro.com", {
+    emailAllowlist: "owner@example.com",
+    emailBootstrapEnabled: true,
+  }).kind, "anonymous");
+  const disabledEmailBootstrap = resolveAdminAccess(
+    new Headers({
+      "oai-authenticated-user-id": "stable-sites-subject",
+      "oai-authenticated-user-email": "owner@example.com",
+    }),
+    "blogdocarro.com",
+    { emailAllowlist: "owner@example.com" },
+  );
+  assert.equal(disabledEmailBootstrap.kind, "misconfigured");
+});
+
+test("limits local admin preview to exact loopback hosts", async () => {
+  const { resolveAdminAccess } = await loadAdminAuthCore();
+  for (const host of ["localhost:3000", "127.0.0.1:8787", "[::1]:4321"]) {
+    assert.equal(resolveAdminAccess(new Headers(), host, {}).kind, "allowed");
+  }
+  for (const host of ["localhost.example.com", "127.0.0.2", "[::2]", "example.com"]) {
+    assert.equal(resolveAdminAccess(new Headers(), host, {}).kind, "misconfigured");
+  }
+});
+
+test("keeps SIWC return paths and mutation origins same-site", async () => {
+  const { adminSignInPath, adminSignOutPath, hasMatchingRequestOrigin } = await loadAdminAuthCore();
+  assert.equal(adminSignInPath("/admin/artigos?draft=1"), "/signin-with-chatgpt?return_to=%2Fadmin%2Fartigos%3Fdraft%3D1");
+  assert.equal(adminSignInPath("https://evil.example/admin"), "/signin-with-chatgpt?return_to=%2Fadmin");
+  assert.equal(adminSignOutPath("//evil.example"), "/signout-with-chatgpt?return_to=%2F");
+  const matching = new Request("https://blogdocarro.com/api/admin", { headers: { origin: "https://blogdocarro.com" } });
+  const foreign = new Request("https://blogdocarro.com/api/admin", { headers: { origin: "https://evil.example" } });
+  assert.equal(hasMatchingRequestOrigin(matching), true);
+  assert.equal(hasMatchingRequestOrigin(foreign), false);
+});
+
+test("rejects cross-origin admin mutations after owner authorization", async () => {
+  const worker = await loadWorker();
+  const configuredEnvironment = { ...environment, ADMIN_OWNER_USER_IDS: '["owner-alpha"]' };
+  const response = await worker.fetch(
+    new Request("https://blogdocarro.com/api/admin/orders", {
+      method: "POST",
+      headers: {
+        origin: "https://evil.example",
+        "oai-authenticated-user-id": "owner-alpha",
+      },
+    }),
+    configuredEnvironment,
+    context,
+  );
+  assert.equal(response.status, 403);
+});
+
+test("does not treat HTTPS loopback as the local admin preview", async () => {
+  const worker = await loadWorker();
+  const response = await worker.fetch(new Request("https://localhost/admin"), environment, context);
+  assert.equal(response.status, 503);
 });
 
 test("adds a safe request ID without reflecting invalid input", async () => {

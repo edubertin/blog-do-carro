@@ -21,8 +21,8 @@ Construir um portal automotivo brasileiro com experiência de aplicativo, priori
 
 ### Registro de decisões
 
-- `docs/adr/0001-editorial-source-pending.md`: CMS ou D1 permanece pendente.
-- `docs/adr/0002-admin-identity-provisioning.md`: identidade administrativa gerenciada e owners provisionados fora do Git.
+- `docs/adr/0001-editorial-source-pending.md`: CMS interno com D1 como fonte editorial única e projeção publicada.
+- `docs/adr/0002-admin-identity-provisioning.md`: Sites/ChatGPT SIWC, RBAC e bootstrap server-side de owner fora do Git.
 - `docs/adr/0003-canonical-domain.md`: `blogdocarro.com` é a origem canônica.
 - `docs/adr/0004-mercado-pago-pix-only.md`: Mercado Pago somente Pix, sem ativação real.
 - `docs/adr/0005-empty-categories-no-ai-content.md`: categorias vazias não recebem conteúdo gerado.
@@ -38,18 +38,18 @@ apps/site (Vinext + Vite + worker Cloudflare)
 
 Sites
 ├── publicação do worker e assets
-├── D1 futuro: comércio, métricas e editorial somente se escolhido
+├── D1 futuro: editorial, administração, comércio e métricas
 ├── R2 futuro: mídia própria
 └── conectores futuros: pagamentos, frete, e-mail e observabilidade
 ```
 
-O conteúdo editorial e os dados transacionais devem permanecer separados. A fonte de verdade de artigos, autores, categorias, menus e páginas continua pendente entre CMS e D1; usuários, favoritos, anúncios, pedidos e eventos de pagamento vivem no banco da aplicação. O portal público sempre consome uma projeção somente de conteúdo publicado.
+O conteúdo editorial e os dados transacionais devem permanecer separados por domínio. D1 será a única fonte de verdade de artigos, revisões, autores, categorias, menus, páginas e composição da home; usuários, favoritos, anúncios, pedidos e eventos de pagamento vivem em tabelas próprias. Uma interface de repositório server-side isola o domínio da persistência, e o portal público sempre consome uma projeção somente de conteúdo publicado.
 
 ### Padrão de publicação no Sites
 
 - Preservar o `project_id` quando `apps/site/.openai/hosting.json` for criado pelo fluxo oficial do Sites.
 - Usar Vinext com Vite e worker Cloudflare, seguindo a estrutura da Plimcor.
-- Reservar D1 para dados transacionais e R2 para mídia própria quando esses recursos entrarem no produto.
+- Reservar D1 para o CMS interno e demais domínios aprovados, e R2 para mídia própria quando esses recursos entrarem no produto.
 - Manter scripts de build, qualidade e segurança centralizados na raiz do workspace.
 - Não adicionar configuração ou dependência de publicação para provedores externos ao Sites.
 
@@ -67,7 +67,7 @@ Todo artigo deve exigir os campos:
 8. artigos relacionados;
 9. status `rascunho`, `revisão`, `agendado` ou `publicado`.
 
-Configurações da página inicial, menu e newsletter devem ser documentos próprios na fonte editorial escolhida, editáveis sem alteração de código.
+Configurações da página inicial, menu e newsletter devem ser documentos próprios no CMS interno, editáveis sem alteração de código.
 
 Categorias sem artigos publicados exibem um estado vazio honesto. Nenhum artigo será gerado ou publicado por IA apenas para preencher uma categoria.
 
@@ -85,9 +85,9 @@ Categorias sem artigos publicados exibem um estado vazio honesto. Nenhum artigo 
 
 ### Fase 1 — fundação editorial
 
-- Decidir por ADR a fonte editorial entre CMS e D1 antes de criar schema ou CRUD real.
-- Ativar D1 somente para os domínios aprovados e aplicar migrations versionadas.
-- Criar painel com autenticação, sessão segura e perfis de editor e administrador.
+- Implementar a interface de repositório editorial e o schema aprovado antes do CRUD real.
+- Ativar D1 somente em preview, para os domínios aprovados e com migrations versionadas.
+- Proteger o painel com Sites/ChatGPT SIWC, autorização server-side, RBAC e bootstrap de owner fora do Git.
 - Implementar preview, rascunho, agendamento, publicação e histórico de alterações.
 - Configurar sitemap, feed, redirects e revalidação automática.
 - Ativar R2 para uploads com validação de tipo, tamanho, dimensões e texto alternativo obrigatório.
@@ -145,10 +145,10 @@ O editor salva automaticamente, alerta sobre alterações não publicadas e sepa
 
 ### Modelo de dados inicial no D1
 
-- Editorial, apenas se D1 for escolhido como fonte: `articles`, `article_revisions`, `authors`, `categories`, `article_categories`, `faqs`, `menus` e `home_sections`.
+- Editorial: `articles`, `article_revisions`, `authors`, `categories`, `article_categories`, `faqs`, `menus` e `home_sections`, acessados por interface de repositório e separados da projeção publicada.
 - Vídeo: `youtube_videos`, vinculando ID, canal, metadados de origem, pôster e artigo.
 - Loja: `products`, `product_variants`, `inventory_movements` e `store_settings`.
-- Administração: `admin_users`, `roles`, `sessions` e `audit_log`.
+- Administração: `admin_users`, `roles` e `audit_log`; a sessão SIWC permanece sob responsabilidade do Sites.
 - Analytics: eventos brutos com retenção curta e tabelas diárias agregadas por rota, origem e dispositivo.
 - Comércio real, somente na Fase 3: `customers`, `addresses`, `orders`, `order_items`, `payments`, `shipments` e `webhook_events`.
 
@@ -163,7 +163,7 @@ O editor salva automaticamente, alerta sobre alterações não publicadas e sepa
 
 Cada integração terá um adaptador isolado, configuração por variável de ambiente, estados separados de modo, configuração, saúde e ativação, teste de saúde e log sanitizado. Mercado Livre, Mercado Pago Pix e Meu Envio continuarão `desconectados` até homologação. O painel mostra somente nomes e estado dos secrets; valores são inseridos e rotacionados exclusivamente pelo mecanismo de secrets do Sites. Nenhuma chave ou token será recebida pelo painel ou salva em artigo, produto, D1 ou código.
 
-As duas identidades iniciais de owner já fornecidas fora do repositório serão provisionadas pelo provedor de identidade e/ou secrets do Sites. E-mails ou outros identificadores pessoais não fazem parte da configuração versionada.
+O bootstrap inicial de owner será executado exclusivamente no servidor, por SIWC e provisionamento e/ou secrets do Sites fora do Git. O fallback temporário por e-mail exige flag server-side explícita, existe apenas para capturar os IDs estáveis do Sites e será desligado antes de dados reais. Identificadores pessoais não fazem parte da configuração versionada, e identidade, sessão e autorização administrativas permanecem separadas da conta de cliente.
 
 A especificação completa do painel, RBAC, audit log, conectores e limites do mock está em `docs/specs/admin-control-plane.md`.
 
@@ -174,7 +174,7 @@ A especificação completa do painel, RBAC, audit log, conectores e limites do m
 - D1 e R2 permanecem `null`; não existe efeito externo de pagamento ou envio.
 - Carrossel, conteúdo editorial, loja e checkout demonstrativo estão prontos para validação visual.
 - O mock administrativo local cobre todas as rotas da matriz, sem persistência, autenticação, secrets ou chamadas externas.
-- Próximo corte recomendado: validar o mock, selecionar a fonte editorial e concluir o ADR técnico do provedor de identidade antes de D1 editorial, migrações ou CRUD real.
+- Próximo corte recomendado: validar o mock e detalhar contratos de repositório, schema, migrations e SIWC antes de ativar D1, R2 ou CRUD real.
 
 ## Spike — vídeo novo para artigo e carrossel
 

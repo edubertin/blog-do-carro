@@ -4,31 +4,35 @@
 
 - Product: Blog do Carro.
 - Repository: `Edubertin/blog-do-carro`.
-- Status: protótipo funcional em repositório privado, ainda não publicado no Sites.
+- Status: protótipo funcional em repositório privado, com projeto Sites provisionado para homologação protegida.
 - Audience: público brasileiro interessado em compra, venda e negociação de veículos; 87% de uso esperado em smartphones.
 - Business goal: transformar os vídeos do canal Deu Negócio em um portal editorial e, depois, em comunidade, loja e marketplace.
 
 ## Current State
 
-- Active phase: estabilização da Fase 0 e validação do mock administrativo.
-- Production status: somente preview local; nenhum deploy autorizado.
-- Release status: repositório privado inicializado; sem versão publicada no Sites.
-- Open decisions: fonte editorial CMS ou D1, provedor técnico da identidade administrativa, datas oficiais dos quatro vídeos, schema D1, política de mídia R2 e homologação dos conectores.
+- Active phase: fundação da Fase 1; fronteira SIWC/owner em homologação por preview protegido do Sites.
+- Production status: somente preview protegido autorizado; D1, R2, dados reais e conectores continuam desligados.
+- Release status: projeto Sites provisionado; a primeira versão serve apenas para validar identidade, dispatcher e origem do Worker.
+- Open decisions: datas oficiais dos quatro vídeos, schema e migrations do D1, política de mídia R2 e homologação dos conectores.
 
 ## Recorded Decisions
 
 - Domínio canônico definitivo: `https://blogdocarro.com`.
-- Duas identidades iniciais de owner foram fornecidas fora do repositório; os identificadores concretos ficam no provedor de identidade e/ou secrets do Sites, nunca na documentação ou no bundle.
+- O CMS editorial será interno ao admin, com D1 como única fonte de verdade e uma interface de repositório entre domínio e persistência.
+- O portal público consumirá somente uma projeção publicada; rascunhos e revisões nunca serão lidos diretamente pelas rotas públicas.
+- R2 será o armazenamento futuro de mídia própria; a decisão não ativa D1, R2 ou uploads nesta fase.
+- A identidade administrativa usará Sites/ChatGPT Sign in with ChatGPT (SIWC), com bootstrap de owner exclusivamente server-side e fora do Git.
+- Identidade, sessão e autorização do admin permanecerão separadas da conta de cliente; permissões administrativas serão aplicadas por RBAC no servidor.
 - Pagamento futuro: Mercado Pago exclusivamente para Pix; integração real bloqueada por credenciais, webhooks, homologação e gates comerciais.
 - Categorias sem artigos publicados permanecem vazias; não serão preenchidas com conteúdo gerado por IA.
-- A fonte editorial continua pendente entre CMS e D1 e deve ser decidida antes do CRUD real.
+- O monograma quadrado `BDC` é o símbolo reduzido oficial para favicon, atalhos e futura PWA; o logotipo horizontal permanece a assinatura principal do portal.
 - Registro detalhado: `docs/adr/`.
 
 ## Stack
 
 - App: `apps/site`, App Router compatível via Vinext, React e TypeScript estrito.
 - Runtime: Vite e Cloudflare Worker empacotado para Sites.
-- Database/storage: D1 e R2 reservados, atualmente desativados.
+- Database/storage: D1 aprovado como fonte editorial futura e R2 reservado para mídia própria; ambos permanecem desativados.
 - Commerce: fluxo demonstrativo local, sem cobrança ou envio; Mercado Pago Pix é apenas o destino futuro aprovado.
 - Observability: fundação local com request ID e limite de erro; nenhum coletor externo conectado.
 
@@ -65,6 +69,7 @@
 - Critérios do mock comercial: `docs/COMMERCE_MOCK_SPEC.md`.
 - Próxima fundação de clientes: `docs/specs/customer-order-portal.md`.
 - Central administrativa: `docs/specs/admin-control-plane.md`.
+- Símbolo reduzido e preparação PWA: `docs/specs/brand-icon-and-pwa.md`.
 - Contrato de observabilidade: `docs/OBSERVABILITY.md`.
 - Decisões arquiteturais: `docs/adr/`.
 

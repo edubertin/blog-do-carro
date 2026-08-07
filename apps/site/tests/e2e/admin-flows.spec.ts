@@ -27,8 +27,3 @@ test("admin passa pelo gate de acessibilidade crítico", async ({ page }) => {
   const blocking = results.violations.filter(({ impact }) => impact === "critical" || impact === "serious");
   expect(blocking).toEqual([]);
 });
-
-test("servidor local rejeita host externo no mock administrativo", async ({ request }) => {
-  const response = await request.get("/admin", { headers: { Host: "blogdocarro.com" } });
-  expect([403, 404]).toContain(response.status());
-});
