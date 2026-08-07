@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-test("admin local navega, fecha o drawer e não persiste secrets", async ({ page }) => {
+test("admin local navega, fecha o drawer e não persiste secrets no navegador", async ({ page }) => {
   await page.goto("/admin", { waitUntil: "networkidle" });
   await expect(page.getByRole("heading", { name: "Hoje na garagem" })).toBeVisible();
 
@@ -14,7 +14,7 @@ test("admin local navega, fecha o drawer e não persiste secrets", async ({ page
   }
 
   await page.goto("/admin/integracoes", { waitUntil: "networkidle" });
-  await expect(page.getByText(/não cole senhas, tokens, chaves ou dados reais/i)).toBeVisible();
+  await expect(page.getByText(/não use dados reais, senhas ou chaves/i)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Fundação operacional" })).toBeVisible();
   await expect(page.getByText("D1 e R2 ausentes", { exact: true })).toBeVisible();
   await expect(page.getByText("valor oculto", { exact: true })).toHaveCount(0);

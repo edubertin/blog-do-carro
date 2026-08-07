@@ -183,7 +183,7 @@ test("keeps editorial bodies and persistence code out of browser chunks", () => 
   assert.doesNotMatch(javascript, /D1Database/i);
 });
 
-test("keeps the administrative mock local and non-cacheable", async () => {
+test("keeps the local CMS private, non-cacheable and explicit about persistence", async () => {
   const worker = await loadWorker();
   const localAdmin = await fetchRoute(worker, "/admin/integracoes");
   const localHtml = await localAdmin.text();
@@ -195,7 +195,8 @@ test("keeps the administrative mock local and non-cacheable", async () => {
   assert.equal(localAdmin.headers.get("x-content-type-options"), "nosniff");
   assert.equal(localAdmin.headers.get("x-frame-options"), "DENY");
   assert.match(localHtml, /name="robots" content="noindex, nofollow/i);
-  assert.match(localHtml, /Não cole senhas, tokens, chaves ou dados reais/i);
+  assert.match(localHtml, /Alterações editoriais são salvas somente no D1 local/i);
+  assert.match(localHtml, /Não use dados reais, senhas ou chaves/i);
   assert.match(localHtml, /Prévia local/i);
   assert.match(localHtml, /Fundação operacional/i);
   assert.match(localHtml, /D1 e R2 ausentes/i);

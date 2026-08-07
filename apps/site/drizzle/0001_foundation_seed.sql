@@ -88,6 +88,25 @@ INSERT OR IGNORE INTO store_settings (
   id, store_name, mode, checkout_enabled, currency, version, updated_at
 ) VALUES (1, 'Loja da Comunidade', 'demo', 0, 'BRL', 1, 0);
 
+INSERT OR IGNORE INTO menus (id, name, status, version, updated_at)
+VALUES ('main', 'Menu principal', 'published', 1, 0);
+
+INSERT OR IGNORE INTO menu_items (id, menu_id, label, href, position, active) VALUES
+  ('menu_inicio', 'main', 'Início', '/', 0, 1),
+  ('menu_artigos', 'main', 'Artigos', '/#ultimos', 1, 1),
+  ('menu_categorias', 'main', 'Categorias', '/#categorias', 2, 1),
+  ('menu_loja', 'main', 'Loja', '/loja', 3, 1),
+  ('menu_sobre', 'main', 'Sobre', '/sobre', 4, 1),
+  ('menu_contato', 'main', 'Contato', '/contato', 5, 1),
+  ('menu_marketplace', 'main', 'Marketplace', '/marketplace', 6, 0);
+
+INSERT OR IGNORE INTO home_sections (id, section_type, title, position, status, version, updated_at) VALUES
+  ('home_hero', 'hero', 'Vídeo em destaque', 0, 'published', 1, 0),
+  ('home_latest', 'latest', 'Agora no Blog', 1, 'published', 1, 0),
+  ('home_categories', 'categories', 'Categorias', 2, 'published', 1, 0),
+  ('home_store', 'store', 'Loja da comunidade', 3, 'published', 1, 0),
+  ('home_popular', 'popular', 'Leituras em destaque', 4, 'published', 1, 0);
+
 INSERT OR IGNORE INTO connector_configurations (
   id, mode, configuration_status, health_status, activation_status,
   configuration_revision, observed_at, last_health_checked_at, updated_at

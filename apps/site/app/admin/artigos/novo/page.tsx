@@ -3,5 +3,5 @@ import { AdminPageHeader } from "../../admin-ui";
 import { ArticleEditor } from "./article-editor";
 
 export default function NewArticlePage(): ReactElement {
-  return <><AdminPageHeader eyebrow="Editor demonstrativo" title="Novo artigo" description="Um fluxo completo para transformar um vídeo do canal em conteúdo editorial, sem salvar ou publicar dados." /><ArticleEditor /></>;
+  return <><AdminPageHeader eyebrow="Editor do CMS" title="Novo artigo" description="Transforme um vídeo do canal em artigo, salve como rascunho e publique somente após confirmação humana." /><ArticleEditor /></>;
 }

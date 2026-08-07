@@ -1,6 +1,6 @@
 # ADR 0006 — Fundação D1 sem dados pessoais
 
-- Status: **aceita**
+- Status: **aceita, sucedida pelo ADR 0007 na ativação dos bindings**
 - Data: **2026-08-06**
 
 ## Contexto

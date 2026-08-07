@@ -169,11 +169,11 @@ export const demoOrders = [
 ] as const;
 
 export const homeSections = [
-  { position: "01", name: "Vídeo em destaque", detail: "Carrossel com os quatro vídeos mais recentes", status: "Ativo no mock" },
-  { position: "02", name: "Agora no Blog", detail: "Três artigos com maior prioridade editorial", status: "Curadoria" },
-  { position: "03", name: "Categorias", detail: "Navegação agrupada por missão do leitor", status: "Curadoria" },
-  { position: "04", name: "Loja da comunidade", detail: "Chaveiro Presente · Edição 01", status: "Demo" },
-  { position: "05", name: "Leituras em destaque", detail: "Ranking editorial sem analytics real", status: "Curadoria" },
+  { id: "home_hero", position: "01", name: "Vídeo em destaque", detail: "Carrossel com os quatro vídeos mais recentes", status: "Publicado" },
+  { id: "home_latest", position: "02", name: "Agora no Blog", detail: "Três artigos com maior prioridade editorial", status: "Publicado" },
+  { id: "home_categories", position: "03", name: "Categorias", detail: "Navegação agrupada por missão do leitor", status: "Publicado" },
+  { id: "home_store", position: "04", name: "Loja da comunidade", detail: "Chaveiro Presente · Edição 01", status: "Publicado" },
+  { id: "home_popular", position: "05", name: "Leituras em destaque", detail: "Ranking editorial sem analytics real", status: "Publicado" },
 ] as const;
 
 export const auditEvents = [

@@ -50,8 +50,8 @@ function configurationState(connector: AdminConnector, inventory: RuntimeInvento
 }
 
 function connectorStatus(connector: AdminConnector, inventory: RuntimeInventory): MockStatus {
-  if (connector.id === "d1" && inventory.bindings.includes("d1")) return "connected";
-  if (connector.id === "r2" && inventory.bindings.includes("r2")) return "connected";
+  if (connector.id === "d1" && inventory.bindings.includes("d1")) return "managed";
+  if (connector.id === "r2" && inventory.bindings.includes("r2")) return "managed";
   return connector.status;
 }
 
@@ -84,6 +84,10 @@ function RuntimeOverview({ inventory }: Readonly<{ inventory: RuntimeInventory }
   const assetsConfigured = inventory.bindings.includes("assets");
   const imagesConfigured = inventory.bindings.includes("images");
   const dataBindings = [inventory.bindings.includes("d1") ? "D1" : null, inventory.bindings.includes("r2") ? "R2" : null].filter(Boolean);
+  const cmsWrites = inventory.configuredKeys.includes("CMS_WRITE_ENABLED");
+  const publicReads = inventory.configuredKeys.includes("CMS_PUBLIC_READ_ENABLED");
+  const mediaUploads = inventory.configuredKeys.includes("MEDIA_UPLOAD_ENABLED");
+  const capabilityFlags = [cmsWrites ? "escrita" : null, publicReads ? "leitura pública" : null, mediaUploads ? "upload" : null].filter(Boolean);
   return (
     <section className="adminRuntimeSection" aria-labelledby="runtime-heading">
       <div className="adminRuntimeHeader"><div><span className="adminEyebrow">Leitura desta requisição</span><h2 id="runtime-heading">Fundação operacional</h2></div><p>Metadados sanitizados gerados no Worker, sem valores de credenciais.</p></div>
@@ -91,7 +95,7 @@ function RuntimeOverview({ inventory }: Readonly<{ inventory: RuntimeInventory }
         <RuntimeCard title="Hospedagem" status={hosted ? "connected" : "mock"} value={hosted ? "Sites + Worker" : "Prévia local"} detail="O portal é executado no runtime Cloudflare administrado pelo Sites." />
         <RuntimeCard title="Administração" status={hosted && ownerConfigured ? "connected" : hosted ? "blocked" : "mock"} value={hosted ? "SIWC" : "Owner local"} detail={hosted ? "Identidade e allowlist são validadas antes das rotas administrativas." : "Identidade sintética limitada ao loopback."} />
         <RuntimeCard title="Assets e imagens" status={assetsConfigured ? "connected" : "managed"} value={imagesConfigured ? "Transformação ativa" : "Fallback seguro"} detail="O binding de imagens é opcional; a origem continua servida sem expor configuração." />
-        <RuntimeCard title="Dados" status={dataBindings.length ? "connected" : "not_connected"} value={dataBindings.length ? dataBindings.join(" + ") : "D1 e R2 ausentes"} detail="Nenhum banco ou bucket é inferido a partir de texto do painel." />
+        <RuntimeCard title="Dados" status={dataBindings.length ? "managed" : "not_connected"} value={dataBindings.length ? `${dataBindings.join(" + ")} provisionados` : "D1 e R2 ausentes"} detail={capabilityFlags.length ? `Flags presentes para: ${capabilityFlags.join(", ")}; o servidor ainda valida o valor.` : "Bindings não ativam leitura, escrita ou upload sozinhos."} />
         <RuntimeCard title="Acesso e domínio" status="managed" value="Controlado no Sites" detail="A política pública e o domínio não são lidos pelo app nem exigem credencial de control plane." />
       </div>
     </section>

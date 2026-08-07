@@ -22,10 +22,14 @@ export function AdminPageHeader(props: HeaderProps): ReactElement {
 }
 
 export function DemoBanner({ localPreview }: Readonly<{ localPreview: boolean }>): ReactElement {
+  const title = localPreview ? "Ambiente local do CMS" : "Sessão SIWC protegida";
+  const message = localPreview
+    ? "Alterações editoriais são salvas somente no D1 local. Não use dados reais, senhas ou chaves."
+    : "Alterações editoriais são auditadas. Nunca cole senhas, tokens ou chaves nos campos de conteúdo.";
   return (
     <div className="adminDemoBanner" role="note">
       <Info size={20} weight="fill" aria-hidden="true" />
-      <div><strong>{localPreview ? "Demonstração local" : "Sessão SIWC protegida"}</strong><span>Nenhuma alteração é salva. Não cole senhas, tokens, chaves ou dados reais.</span></div>
+      <div><strong>{title}</strong><span>{message}</span></div>
     </div>
   );
 }
