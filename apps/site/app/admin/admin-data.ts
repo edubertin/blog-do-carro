@@ -1,4 +1,4 @@
-export type MockStatus = "mock" | "planned" | "not_connected" | "blocked";
+export type MockStatus = "connected" | "managed" | "mock" | "planned" | "not_connected" | "blocked";
 
 export type AdminConnector = Readonly<{
   id: string;
@@ -17,6 +17,8 @@ export type AdminConnector = Readonly<{
 }>;
 
 export const statusLabels: Readonly<Record<MockStatus, string>> = {
+  connected: "Ativo",
+  managed: "Gerenciado no Sites",
   mock: "Mock local",
   planned: "Planejado",
   not_connected: "Não conectado",
@@ -73,7 +75,7 @@ export const adminConnectors: readonly AdminConnector[] = [
     id: "d1",
     name: "Cloudflare D1",
     area: "Dados",
-    summary: "Persistência futura de administração, loja, métricas e conteúdo somente se D1 for escolhido.",
+    summary: "Fundação local pronta para conteúdo, catálogo e control plane; o binding ainda não foi criado.",
     status: "not_connected",
     mode: "disabled",
     configuration: "missing",
@@ -82,7 +84,7 @@ export const adminConnectors: readonly AdminConnector[] = [
     requiredSettings: ["D1 binding gerenciado pelo Sites"],
     requiredSecrets: [],
     relatedRoutes: ["/admin/*", "/meus-pedidos/*"],
-    nextStep: "Aprovar schema, migrations versionadas e bancos separados por ambiente.",
+    nextStep: "Revisar a migration em preview isolado e decidir a separação do futuro banco comercial antes de criar o binding.",
   },
   {
     id: "r2",

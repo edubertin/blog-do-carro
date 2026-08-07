@@ -7,25 +7,23 @@ import { SquaresFour } from "@phosphor-icons/react/SquaresFour";
 import { X } from "@phosphor-icons/react/X";
 import { SiteLink as Link } from "@/app/components/site-link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactElement, RefObject } from "react";
 import { CartLink } from "@/app/commerce/cart-link";
-import { categories, publishedArticles, slugifyCategory } from "@/app/lib/content";
+import type {
+  NavigationProjection,
+  PublicCategory,
+  PublicSearchDocument,
+} from "@/domain/public-content";
 import { BrandLogo } from "./brand-logo";
 
 type CloseHandler = { onClose: () => void };
 type SearchPanelProps = CloseHandler & { open: boolean };
-type DrawerProps = CloseHandler & { open: boolean };
-
-const menuItems = [
-  ["Início", "/"],
-  ["Artigos", "/#ultimos"],
-  ["Categorias", "/#categorias"],
-  ["Loja", "/loja"],
-  ["Sobre", "/sobre"],
-  ["Contato", "/contato"],
-  ["Marketplace", "/marketplace"],
-] as const;
+type DrawerProps = CloseHandler & {
+  open: boolean;
+  categories: readonly PublicCategory[];
+  items: NavigationProjection["items"];
+};
 
 const focusableSelector = "a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex='-1'])";
 
@@ -91,7 +89,7 @@ function IconButton(props: IconButtonProps): ReactElement {
   );
 }
 
-function MenuDrawer({ open, onClose }: DrawerProps): ReactElement {
+function MenuDrawer({ open, onClose, categories, items }: DrawerProps): ReactElement {
   const panelRef = useRef<HTMLElement>(null);
   useOverlayAccessibility(open, onClose, panelRef);
   return (
@@ -104,36 +102,93 @@ function MenuDrawer({ open, onClose }: DrawerProps): ReactElement {
             <X size={22} weight="bold" aria-hidden="true" />
           </button>
         </div>
-        <nav className="drawerLinks">{menuItems.map(([label, href]) => <Link href={href} onClick={onClose} key={label}>{label}</Link>)}</nav>
+        <nav className="drawerLinks">{items.map((item) => <Link href={item.href} onClick={onClose} key={item.href}>{item.label}</Link>)}</nav>
         <p className="drawerLabel">Categorias</p>
-        <div className="drawerCategories">{categories.map((category) => <Link href={`/categoria/${slugifyCategory(category)}`} onClick={onClose} key={category}>{category}</Link>)}</div>
+        <div className="drawerCategories">{categories.map((category) => <Link href={`/categoria/${category.slug}`} onClick={onClose} key={category.slug}>{category.name}</Link>)}</div>
       </aside>
     </div>
   );
 }
 
-function SearchResults({ query, onClose }: { query: string; onClose: () => void }): ReactElement {
-  const results = useMemo(() => {
-    const term = query.trim().toLocaleLowerCase("pt-BR");
-    return term ? publishedArticles.filter((article) => {
-      const searchableContent = [article.title, article.category, article.subtitle, ...article.body].join(" ");
-      return searchableContent.toLocaleLowerCase("pt-BR").includes(term);
-    }) : publishedArticles;
-  }, [query]);
+type SearchStatus = "idle" | "loading" | "ready" | "error";
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isSearchDocument(value: unknown): value is PublicSearchDocument {
+  if (!isRecord(value)) return false;
+  return ["slug", "category", "title", "subtitle"].every((key) => key in value && typeof value[key] === "string");
+}
+
+function searchDocuments(value: unknown): readonly PublicSearchDocument[] | null {
+  if (!isRecord(value) || !("results" in value)) return null;
+  const results = value.results;
+  return Array.isArray(results) && results.every(isSearchDocument) ? results : null;
+}
+
+function SearchResults(props: Readonly<{ results: readonly PublicSearchDocument[]; status: SearchStatus; query: string; onClose: () => void }>): ReactElement {
   return (
     <div className="searchResults">
-      {results.map((article) => (
-        <Link href={`/artigos/${article.slug}`} onClick={onClose} key={article.slug}>
+      {props.status === "loading" ? <p role="status">Buscando artigos publicados…</p> : null}
+      {props.status === "error" ? <p role="alert">A busca ficou indisponível. Tente novamente.</p> : null}
+      {props.results.map((article) => (
+        <Link href={`/artigos/${article.slug}`} onClick={props.onClose} key={article.slug}>
           <span>{article.category}</span><strong>{article.title}</strong>
         </Link>
       ))}
-      {!results.length && <p>Nenhum artigo encontrado. Tente outro termo.</p>}
+      {props.status === "ready" && props.query.trim().length >= 2 && !props.results.length ? <p>Nenhum artigo encontrado. Tente outro termo.</p> : null}
     </div>
   );
 }
 
-function SearchPanel({ open, onClose }: SearchPanelProps): ReactElement {
+type PublishedSearchState = Readonly<{
+  results: readonly PublicSearchDocument[];
+  status: SearchStatus;
+}>;
+
+function usePublishedSearch(query: string, suggestions: readonly PublicSearchDocument[]): PublishedSearchState {
+  const [results, setResults] = useState<readonly PublicSearchDocument[]>([]);
+  const [status, setStatus] = useState<SearchStatus>("idle");
+  const [settledQuery, setSettledQuery] = useState("");
+  useEffect(() => {
+    const term = query.trim();
+    if (term.length < 2) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setStatus("loading");
+      try {
+        const response = await fetch(`/api/public/search?q=${encodeURIComponent(term)}`, { signal: controller.signal });
+        const payload: unknown = await response.json();
+        const parsed = response.ok ? searchDocuments(payload) : null;
+        if (!parsed) throw new Error("Resposta inválida da busca pública.");
+        setResults(parsed);
+        setStatus("ready");
+        setSettledQuery(term);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        console.error("A busca pública falhou.", error);
+        setResults([]);
+        setStatus("error");
+        setSettledQuery(term);
+      }
+    }, 220);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query, suggestions]);
+  const term = query.trim();
+  if (term.length < 2) return { results: suggestions, status: "idle" };
+  if (settledQuery !== term) return { results: [], status: "loading" };
+  return { results, status };
+}
+
+type SearchPanelWithDataProps = SearchPanelProps & { suggestedArticles: readonly PublicSearchDocument[] };
+
+function SearchPanel({ open, onClose, suggestedArticles }: SearchPanelWithDataProps): ReactElement {
   const [query, setQuery] = useState("");
+  const search = usePublishedSearch(query, suggestedArticles);
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   useOverlayAccessibility(open, onClose, panelRef, inputRef);
@@ -146,7 +201,7 @@ function SearchPanel({ open, onClose }: SearchPanelProps): ReactElement {
           <MagnifyingGlass size={21} aria-hidden="true" />
           <input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Digite modelo, categoria ou assunto" />
         </label>
-        <SearchResults query={query} onClose={onClose} />
+        <SearchResults results={search.results} status={search.status} query={query} onClose={onClose} />
       </div>
     </div>
   );
@@ -164,7 +219,7 @@ function BottomNav({ onSearch }: { onSearch: () => void }): ReactElement {
   );
 }
 
-export function SiteNavigation(): ReactElement {
+export function SiteNavigation({ navigation }: Readonly<{ navigation: NavigationProjection }>): ReactElement {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
@@ -180,8 +235,8 @@ export function SiteNavigation(): ReactElement {
           <div className="headerActions"><IconButton kind="search" label="Abrir busca" controls="site-search" expanded={searchOpen} onClick={openSearch} /><CartLink compact /></div>
         </div>
       </header>
-      <MenuDrawer open={menuOpen} onClose={closeMenu} />
-      <SearchPanel open={searchOpen} onClose={closeSearch} />
+      <MenuDrawer open={menuOpen} onClose={closeMenu} categories={navigation.categories} items={navigation.items} />
+      <SearchPanel open={searchOpen} onClose={closeSearch} suggestedArticles={navigation.suggestedArticles} />
       <BottomNav onSearch={openSearch} />
     </>
   );

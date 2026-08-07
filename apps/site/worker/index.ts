@@ -8,6 +8,7 @@ import {
   ADMIN_AUTHORIZED_HEADER,
   LOCAL_PREVIEW_HEADER,
 } from "../app/admin/admin-auth-core";
+import { attachRuntimeInventory } from "../app/admin/integracoes/runtime-inventory";
 import { adminGateResponse, isLocalPreviewUrl, isProtectedAdminPath } from "./admin-access";
 import type { AdminAuthEnvironment } from "./admin-access";
 
@@ -24,6 +25,7 @@ interface AssetFetcher {
 }
 
 interface Env extends AdminAuthEnvironment {
+  [key: string]: unknown;
   ASSETS?: AssetFetcher;
   IMAGES?: ImagesBinding;
 }
@@ -76,12 +78,14 @@ function fetchSourceAsset(path: string, request: Request, assets?: AssetFetcher)
   return assets ? assets.fetch(assetRequest) : fetch(assetRequest);
 }
 
-function adminHandlerRequest(request: Request, url: URL): Request {
+function adminHandlerRequest(request: Request, url: URL, env: Env): Request {
   const headers = new Headers(request.headers);
   headers.delete(LOCAL_PREVIEW_HEADER);
   headers.delete(ADMIN_AUTHORIZED_HEADER);
   headers.set(ADMIN_AUTHORIZED_HEADER, "owner");
-  if (isLocalPreviewUrl(url)) headers.set(LOCAL_PREVIEW_HEADER, "1");
+  const localPreview = isLocalPreviewUrl(url);
+  if (localPreview) headers.set(LOCAL_PREVIEW_HEADER, "1");
+  attachRuntimeInventory(headers, env, localPreview ? "local" : "sites");
   if (request.method === "GET" || request.method === "HEAD") {
     return new Request(request.url, { method: request.method, headers, redirect: request.redirect });
   }
@@ -116,7 +120,7 @@ async function handleRequest(
   if (isProtectedAdminPath(url.pathname)) {
     const denied = adminGateResponse(request, env, url);
     if (denied) return hardenAdminResponse(denied);
-    return hardenAdminResponse(await handler.fetch(adminHandlerRequest(request, url), env, ctx));
+    return hardenAdminResponse(await handler.fetch(adminHandlerRequest(request, url, env), env, ctx));
   }
   if (!imageOptimizationPaths.has(url.pathname)) return handler.fetch(request, env, ctx);
 

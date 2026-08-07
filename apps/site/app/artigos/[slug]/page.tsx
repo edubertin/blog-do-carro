@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
 import { ArticlePage } from "@/app/components/article-page";
-import type { Article } from "@/app/lib/content";
-import { findPublishedArticle, publishedArticles, slugifyCategory } from "@/app/lib/content";
+import type { PublicArticle } from "@/domain/public-content";
+import { getArticlePageProjection, listPublishedArticles } from "@/server/public-content-service";
 
 type ArticleRouteProps = { params: Promise<{ slug: string }> };
 type JsonLdNode = Readonly<Record<string, unknown>>;
@@ -11,21 +11,23 @@ type JsonLdNode = Readonly<Record<string, unknown>>;
 const baseUrl = "https://blogdocarro.com";
 const organizationId = `${baseUrl}/#organization`;
 
-export function generateStaticParams(): Array<{ slug: string }> {
-  return publishedArticles.map((article) => ({ slug: article.slug }));
+export async function generateStaticParams(): Promise<Array<{ slug: string }>> {
+  const articles = await listPublishedArticles();
+  return articles.map((article) => ({ slug: article.slug }));
 }
 
 export async function generateMetadata({ params }: ArticleRouteProps): Promise<Metadata> {
-  const article = findPublishedArticle((await params).slug);
-  if (!article) return {};
+  const projection = await getArticlePageProjection((await params).slug);
+  if (!projection) return {};
+  const { article } = projection;
   return {
     title: article.title,
-    description: article.subtitle,
+    description: article.seoDescription,
     alternates: { canonical: `/artigos/${article.slug}` },
     openGraph: {
       type: "article",
       title: article.title,
-      description: article.subtitle,
+      description: article.seoDescription,
       images: [article.image],
       publishedTime: article.publishedAt,
       modifiedTime: article.updatedAt,
@@ -43,8 +45,8 @@ function organizationSchema(): JsonLdNode {
   };
 }
 
-function breadcrumbSchema(article: Article): JsonLdNode {
-  const categoryUrl = `${baseUrl}/categoria/${slugifyCategory(article.category)}`;
+function breadcrumbSchema(article: PublicArticle): JsonLdNode {
+  const categoryUrl = `${baseUrl}/categoria/${article.categorySlug}`;
   return {
     "@type": "BreadcrumbList",
     "@id": `${baseUrl}/artigos/${article.slug}#breadcrumb`,
@@ -56,14 +58,14 @@ function breadcrumbSchema(article: Article): JsonLdNode {
   };
 }
 
-function articleSchema(article: Article): JsonLdNode {
+function articleSchema(article: PublicArticle): JsonLdNode {
   const articleUrl = `${baseUrl}/artigos/${article.slug}`;
   return {
     "@type": "Article",
     "@id": `${articleUrl}#article`,
     mainEntityOfPage: { "@type": "WebPage", "@id": articleUrl },
     headline: article.title,
-    description: article.subtitle,
+    description: article.seoDescription,
     image: `${baseUrl}${article.image}`,
     articleSection: article.category,
     inLanguage: "pt-BR",
@@ -74,7 +76,7 @@ function articleSchema(article: Article): JsonLdNode {
   };
 }
 
-function faqSchema(article: Article): JsonLdNode {
+function faqSchema(article: PublicArticle): JsonLdNode {
   return {
     "@type": "FAQPage",
     "@id": `${baseUrl}/artigos/${article.slug}#faq`,
@@ -86,14 +88,15 @@ function faqSchema(article: Article): JsonLdNode {
   };
 }
 
-function serializeArticleGraph(article: Article): string {
+function serializeArticleGraph(article: PublicArticle): string {
   const graph = [organizationSchema(), breadcrumbSchema(article), articleSchema(article), faqSchema(article)];
   return JSON.stringify({ "@context": "https://schema.org", "@graph": graph }).replace(/</g, "\\u003c");
 }
 
 export default async function ArticleRoute({ params }: ArticleRouteProps): Promise<ReactElement> {
-  const article = findPublishedArticle((await params).slug);
-  if (!article) notFound();
+  const projection = await getArticlePageProjection((await params).slug);
+  if (!projection) notFound();
+  const { article, relatedArticles } = projection;
   const jsonLd = serializeArticleGraph(article);
-  return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} /><ArticlePage article={article} /></>;
+  return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} /><ArticlePage article={article} relatedArticles={relatedArticles} /></>;
 }

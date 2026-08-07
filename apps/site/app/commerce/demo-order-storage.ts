@@ -4,12 +4,12 @@ import type { ShippingId } from "./catalog";
 
 const storageKey = "blog-do-carro-demo-order-v1";
 
-export function createDemoOrder(quantity: number, shippingId: ShippingId): DemoOrder {
+export function createDemoOrder(quantity: number, maximum: number, shippingId: ShippingId): DemoOrder {
   const suffix = crypto.randomUUID().replaceAll("-", "").slice(0, 8).toUpperCase();
   return {
     version: 1,
     id: `DEMO-CHP-${suffix}`,
-    quantity: clampQuantity(quantity),
+    quantity: clampQuantity(quantity, maximum),
     shippingId,
     createdAt: new Date().toISOString(),
     status: "simulation_complete",

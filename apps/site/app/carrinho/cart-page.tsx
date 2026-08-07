@@ -7,24 +7,25 @@ import Image from "next/image";
 import { SiteLink as Link } from "@/app/components/site-link";
 import type { ReactElement } from "react";
 import { useCart } from "@/app/commerce/cart-provider";
-import { formatMoney, keychainProduct } from "@/app/commerce/catalog";
+import { formatMoney } from "@/app/commerce/catalog";
 import { QuantityControl } from "@/app/components/commerce/quantity-control";
+import type { CatalogProduct } from "@/db/contracts";
 
-export function CartPage(): ReactElement {
+export function CartPage({ product }: Readonly<{ product: CatalogProduct }>): ReactElement {
   const { items, ready, setQuantity, removeProduct } = useCart();
   const item = items[0];
   if (!ready) return <CommerceLoading />;
   if (!item) return <EmptyCart />;
-  const subtotal = keychainProduct.priceCents * item.quantity;
+  const subtotal = product.priceCents * item.quantity;
   return (
     <div className="commerceShell cartShell">
       <CommerceHeader eyebrow="Compra simulada · 01" title="Revise seu chaveiro." description="A próxima etapa coleta dados somente na memória desta página." />
       <div className="cartLayout">
         <section className="cartList" aria-label="Itens do carrinho">
           <article className="cartLine">
-            <div className="cartImage"><Image src={keychainProduct.image} alt="Chaveiro Presente" fill sizes="120px" /></div>
-            <div className="cartCopy"><span>{keychainProduct.collection}</span><h2>{keychainProduct.name}</h2><strong>{formatMoney(keychainProduct.priceCents)} cada</strong><button type="button" onClick={removeProduct}><Trash size={16} />Remover</button></div>
-            <QuantityControl quantity={item.quantity} onChange={setQuantity} />
+            <div className="cartImage"><Image src={product.imageUrl} alt={product.imageAlt} fill sizes="120px" /></div>
+            <div className="cartCopy"><span>{product.collectionName}</span><h2>{product.name}</h2><strong>{formatMoney(product.priceCents)} cada</strong><button type="button" onClick={removeProduct}><Trash size={16} />Remover</button></div>
+            <QuantityControl quantity={item.quantity} maximum={product.maxPerCart} onChange={setQuantity} />
             <b className="cartLineTotal">{formatMoney(subtotal)}</b>
           </article>
           <Link className="textAction" href="/loja/chaveiro-presente">← Voltar ao produto</Link>

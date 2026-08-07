@@ -13,7 +13,7 @@
 - Active phase: fundação da Fase 1; fronteira SIWC/owner em homologação por preview protegido do Sites.
 - Production status: somente preview protegido autorizado; D1, R2, dados reais e conectores continuam desligados.
 - Release status: projeto Sites provisionado; a primeira versão serve apenas para validar identidade, dispatcher e origem do Worker.
-- Open decisions: datas oficiais dos quatro vídeos, schema e migrations do D1, política de mídia R2 e homologação dos conectores.
+- Open decisions: datas oficiais dos quatro vídeos, separação física do futuro D1 comercial/PII, política de mídia R2 e homologação dos conectores.
 
 ## Recorded Decisions
 
@@ -25,6 +25,7 @@
 - Identidade, sessão e autorização do admin permanecerão separadas da conta de cliente; permissões administrativas serão aplicadas por RBAC no servidor.
 - Pagamento futuro: Mercado Pago exclusivamente para Pix; integração real bloqueada por credenciais, webhooks, homologação e gates comerciais.
 - Categorias sem artigos publicados permanecem vazias; não serão preenchidas com conteúdo gerado por IA.
+- O primeiro migration D1 é local e não contém PII, autenticação de cliente, pedidos, pagamentos ou envios; esses domínios exigem decisão própria antes da ativação.
 - O monograma quadrado `BDC` é o símbolo reduzido oficial para favicon, atalhos e futura PWA; o logotipo horizontal permanece a assinatura principal do portal.
 - Registro detalhado: `docs/adr/`.
 
@@ -32,7 +33,7 @@
 
 - App: `apps/site`, App Router compatível via Vinext, React e TypeScript estrito.
 - Runtime: Vite e Cloudflare Worker empacotado para Sites.
-- Database/storage: D1 aprovado como fonte editorial futura e R2 reservado para mídia própria; ambos permanecem desativados.
+- Database/storage: fundação D1 versionada e testada localmente para editorial, catálogo e control plane; binding D1 e R2 permanecem desativados.
 - Commerce: fluxo demonstrativo local, sem cobrança ou envio; Mercado Pago Pix é apenas o destino futuro aprovado.
 - Observability: fundação local com request ID e limite de erro; nenhum coletor externo conectado.
 
@@ -72,6 +73,7 @@
 - Símbolo reduzido e preparação PWA: `docs/specs/brand-icon-and-pwa.md`.
 - Contrato de observabilidade: `docs/OBSERVABILITY.md`.
 - Decisões arquiteturais: `docs/adr/`.
+- Fundação D1 local: `docs/specs/d1-foundation.md`.
 
 ## Safety
 

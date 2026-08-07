@@ -19,17 +19,19 @@ type CartContextValue = Readonly<{
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-export function CartProvider({ children }: Readonly<{ children: ReactNode }>): ReactElement {
+type CartProviderProps = Readonly<{ children: ReactNode; maximumQuantity: number }>;
+
+export function CartProvider({ children, maximumQuantity }: CartProviderProps): ReactElement {
   const [items, setItems] = useState<readonly CartItem[]>([]);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setItems(parseCartSnapshot(readStoredCart()));
+      setItems(parseCartSnapshot(readStoredCart(), maximumQuantity));
       setReady(true);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [maximumQuantity]);
 
   useEffect(() => {
     if (ready) writeStoredCart({ version: 1, items });
@@ -44,11 +46,11 @@ export function CartProvider({ children }: Readonly<{ children: ReactNode }>): R
     items,
     itemCount: items.reduce((total, item) => total + item.quantity, 0),
     ready,
-    addProduct: (quantity) => replaceItems(addQuantity(items, quantity)),
-    setQuantity: (quantity) => replaceItems([createCartItem(quantity)]),
+    addProduct: (quantity) => replaceItems(addQuantity(items, quantity, maximumQuantity)),
+    setQuantity: (quantity) => replaceItems([createCartItem(quantity, maximumQuantity)]),
     removeProduct: () => replaceItems([]),
     clearCart: () => replaceItems([]),
-  }), [items, ready, replaceItems]);
+  }), [items, maximumQuantity, ready, replaceItems]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
@@ -59,9 +61,9 @@ export function useCart(): CartContextValue {
   return context;
 }
 
-function addQuantity(items: readonly CartItem[], quantity: number): CartItem[] {
+function addQuantity(items: readonly CartItem[], quantity: number, maximum: number): CartItem[] {
   const currentQuantity = items[0]?.quantity ?? 0;
-  return [createCartItem(currentQuantity + quantity)];
+  return [createCartItem(currentQuantity + quantity, maximum)];
 }
 
 function readStoredCart(): string | null {

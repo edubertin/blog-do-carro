@@ -264,6 +264,8 @@
 }
 
 .adminStatus i { width: 7px; height: 7px; border-radius: 50%; background: #6f6f6f; }
+.adminStatus--connected i { background: #69cf91; box-shadow: 0 0 0 4px rgb(105 207 145 / 10%); }
+.adminStatus--managed i { background: #9b87dc; }
 .adminStatus--mock i { background: var(--admin-brand); box-shadow: 0 0 0 4px rgb(244 180 0 / 10%); }
 .adminStatus--planned i { background: #7899df; }
 .adminStatus--blocked i { background: #d88080; }
@@ -457,6 +459,16 @@ body:has(.adminDrawerLayer[data-open="true"]) { overflow: hidden; }
 .adminFormSection > p { margin: 7px 0 15px; color: var(--admin-muted); font-size: .67rem; line-height: 1.5; }
 .adminFormActions { padding-top: 18px; display: flex; flex-wrap: wrap; gap: 10px; border-top: 1px solid var(--admin-line); }
 
+.adminRuntimeSection { margin-bottom: 14px; }
+.adminRuntimeHeader { margin-bottom: 12px; display: grid; gap: 8px; }
+.adminRuntimeHeader h2 { margin-top: 5px; font-size: 1.15rem; }
+.adminRuntimeHeader p { max-width: 52ch; color: var(--admin-muted); font-size: .66rem; line-height: 1.5; }
+.adminRuntimeGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.adminRuntimeCard { min-height: 150px; padding: 14px; display: flex; flex-direction: column; align-items: flex-start; }
+.adminRuntimeCard > span:not(.adminStatus) { margin-top: 17px; color: var(--admin-muted); font-size: .59rem; text-transform: uppercase; letter-spacing: .04em; }
+.adminRuntimeCard > strong { margin-top: 6px; font-size: .8rem; line-height: 1.25; }
+.adminRuntimeCard > p { margin-top: 9px; color: #898989; font-size: .59rem; line-height: 1.45; }
+
 .adminConnectorLayout { display: grid; gap: 14px; }
 .adminConnectorList { margin-inline: -15px; padding-inline: 15px; display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; }
 .adminConnectorList::-webkit-scrollbar { display: none; }
@@ -496,8 +508,12 @@ body:has(.adminDrawerLayer[data-open="true"]) { overflow: hidden; }
 .adminSecretRow { padding: 11px 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; background: #101010; border: 1px solid #292929; border-radius: 12px; }
 .adminSecretRow code { color: #d5d5cd; font-size: .61rem; overflow-wrap: anywhere; }
 .adminSecretRow span { color: #d49696; font-size: .57rem; font-weight: 700; }
+.adminSecretRow[data-configured="true"] span { color: #79d69f; }
 .adminConnectorRoutes { margin-top: 13px; display: flex; flex-wrap: wrap; gap: 7px; }
 .adminConnectorRoutes code { padding: 6px 8px; color: #aaa; background: #0c0c0c; border: 1px solid #2b2b2b; border-radius: 8px; font-size: .57rem; }
+.adminRefreshAction { padding-top: 18px; display: grid; justify-items: start; gap: 8px; border-top: 1px solid var(--admin-line); }
+.adminRefreshAction span { color: var(--admin-muted); font-size: .61rem; line-height: 1.4; }
+.adminRefreshAction .adminButton:disabled { opacity: .62; cursor: wait; }
 
 .adminBarList { display: grid; gap: 14px; }
 .adminBarHeader { display: flex; justify-content: space-between; gap: 12px; color: #c9c9c3; font-size: .65rem; }
@@ -529,6 +545,9 @@ body:has(.adminDrawerLayer[data-open="true"]) { overflow: hidden; }
   .adminGrid--split { grid-template-columns: 1.2fr .8fr; }
   .adminGrid--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .adminFieldGrid--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .adminRuntimeHeader { grid-template-columns: 1fr auto; align-items: end; }
+  .adminRuntimeHeader p { text-align: right; }
+  .adminRuntimeGrid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .adminConnectorLayout { grid-template-columns: 300px minmax(0, 1fr); align-items: start; }
   .adminConnectorList { margin-inline: 0; padding-inline: 0; display: grid; overflow: visible; }
   .adminConnectorButton { min-width: 0; }

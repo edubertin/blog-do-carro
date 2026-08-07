@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync, readdirSync } from "node:fs";
 
 async function loadWorker() {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
@@ -157,6 +158,31 @@ test("does not resolve an unpublished article route", async () => {
   assert.doesNotMatch(categoryHtml, new RegExp(draftArticleSlug, "i"));
 });
 
+test("searches published article content through the server projection", async () => {
+  const worker = await loadWorker();
+  const bodyMatch = await fetchRoute(worker, "/api/public/search?q=parcela%20confort%C3%A1vel");
+  assert.equal(bodyMatch.status, 200);
+  assert.equal(bodyMatch.headers.get("cache-control"), "private, no-store");
+  const payload = await bodyMatch.json();
+  assert.deepEqual(Object.keys(payload.results[0]).sort(), ["category", "slug", "subtitle", "title"]);
+  assert.equal(payload.results[0].slug, "moto-por-spin-financiada-bom-negocio");
+  assert.doesNotMatch(JSON.stringify(payload), /opinion|body|faq/i);
+
+  const tooLong = await fetchRoute(worker, `/api/public/search?q=${"a".repeat(81)}`);
+  assert.equal(tooLong.status, 400);
+});
+
+test("keeps editorial bodies and persistence code out of browser chunks", () => {
+  const chunkDirectory = new URL("../dist/client/_next/static/chunks/", import.meta.url);
+  const javascript = readdirSync(chunkDirectory)
+    .filter((file) => file.endsWith(".js"))
+    .map((file) => readFileSync(new URL(file, chunkDirectory), "utf8"))
+    .join("\n");
+  assert.doesNotMatch(javascript, /Uma parcela confortável pode esconder um custo final/i);
+  assert.doesNotMatch(javascript, /published_article_projections/i);
+  assert.doesNotMatch(javascript, /D1Database/i);
+});
+
 test("keeps the administrative mock local and non-cacheable", async () => {
   const worker = await loadWorker();
   const localAdmin = await fetchRoute(worker, "/admin/integracoes");
@@ -171,6 +197,33 @@ test("keeps the administrative mock local and non-cacheable", async () => {
   assert.match(localHtml, /name="robots" content="noindex, nofollow/i);
   assert.match(localHtml, /Não cole senhas, tokens, chaves ou dados reais/i);
   assert.match(localHtml, /Prévia local/i);
+  assert.match(localHtml, /Fundação operacional/i);
+  assert.match(localHtml, /D1 e R2 ausentes/i);
+  assert.doesNotMatch(localHtml, /valor oculto/i);
+});
+
+test("renders only sanitized runtime inventory and ignores spoofed inventory headers", async () => {
+  const worker = await loadWorker();
+  const hostedEnvironment = {
+    ...environment,
+    ADMIN_OWNER_USER_IDS: '["owner-alpha"]',
+    YOUTUBE_CHANNEL_ID: "channel-private-value",
+    YOUTUBE_API_KEY: "secret-private-value",
+  };
+  const response = await worker.fetch(new Request("https://blogdocarro.com/admin/integracoes", {
+    headers: {
+      "oai-authenticated-user-id": "owner-alpha",
+      "x-blog-do-carro-runtime-configured-keys": "RESEND_API_KEY",
+      "x-blog-do-carro-runtime-bindings": "d1,r2",
+    },
+  }), hostedEnvironment, context);
+  const html = await response.text();
+  assert.equal(response.status, 200);
+  assert.match(html, /Sites \+ Worker/i);
+  assert.match(html, /configurado no Sites/i);
+  assert.match(html, /D1 e R2 ausentes/i);
+  assert.doesNotMatch(html, /channel-private-value/i);
+  assert.doesNotMatch(html, /secret-private-value/i);
 });
 
 test("gates the hosted admin through SIWC and a server-side owner bootstrap", async () => {

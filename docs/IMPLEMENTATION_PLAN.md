@@ -26,6 +26,7 @@ Construir um portal automotivo brasileiro com experiência de aplicativo, priori
 - `docs/adr/0003-canonical-domain.md`: `blogdocarro.com` é a origem canônica.
 - `docs/adr/0004-mercado-pago-pix-only.md`: Mercado Pago somente Pix, sem ativação real.
 - `docs/adr/0005-empty-categories-no-ai-content.md`: categorias vazias não recebem conteúdo gerado.
+- `docs/adr/0006-d1-foundation-without-pii.md`: primeiro migration D1 local sem PII, cliente, pagamento ou envio.
 
 ## Arquitetura alvo
 
@@ -145,12 +146,12 @@ O editor salva automaticamente, alerta sobre alterações não publicadas e sepa
 
 ### Modelo de dados inicial no D1
 
-- Editorial: `articles`, `article_revisions`, `authors`, `categories`, `article_categories`, `faqs`, `menus` e `home_sections`, acessados por interface de repositório e separados da projeção publicada.
+- Editorial: `articles`, `article_revisions`, `authors`, `categories`, categorias e FAQs por revisão, `menus` e `home_sections`, acessados por interface de repositório e separados da projeção publicada.
 - Vídeo: `youtube_videos`, vinculando ID, canal, metadados de origem, pôster e artigo.
-- Loja: `products`, `product_variants`, `inventory_movements` e `store_settings`.
-- Administração: `admin_users`, `roles` e `audit_log`; a sessão SIWC permanece sob responsabilidade do Sites.
+- Loja: `products`, `product_variants`, `inventory_balances`, `inventory_movements` e `store_settings`.
+- Administração: `admin_principals`, atribuições de papel, `audit_events` e idempotência; a sessão SIWC e a matriz de permissões permanecem sob responsabilidade do Sites e do código server-side.
 - Analytics: eventos brutos com retenção curta e tabelas diárias agregadas por rota, origem e dispositivo.
-- Comércio real, somente na Fase 3: `customers`, `addresses`, `orders`, `order_items`, `payments`, `shipments` e `webhook_events`.
+- Comércio real, somente em migration futura da Fase 3: clientes, endereços, pedidos, detalhes privados, itens, pagamentos, envios e webhooks, após ADR de PII e retenção.
 
 ### Analytics
 
@@ -172,9 +173,11 @@ A especificação completa do painel, RBAC, audit log, conectores e limites do m
 - Fase 0 implementada e estabilizada no runtime Vinext/Sites.
 - Build empacota o worker, assets e `.openai/hosting.json`.
 - D1 e R2 permanecem `null`; não existe efeito externo de pagamento ou envio.
-- Carrossel, conteúdo editorial, loja e checkout demonstrativo estão prontos para validação visual.
-- O mock administrativo local cobre todas as rotas da matriz, sem persistência, autenticação, secrets ou chamadas externas.
-- Próximo corte recomendado: validar o mock e detalhar contratos de repositório, schema, migrations e SIWC antes de ativar D1, R2 ou CRUD real.
+- O primeiro migration D1 e seu seed não sensível estão versionados e passam em SQLite efêmero; nenhum binding foi criado ou aplicado.
+- Carrossel, conteúdo editorial, busca, loja e checkout demonstrativo consomem contratos server-side e estão prontos para validação visual.
+- O mock administrativo local cobre todas as rotas da matriz com fronteira SIWC/owner, sem persistência real, secrets ou chamadas externas.
+- A projeção pública já alimenta home, navegação, artigo, relacionados, categorias, sitemap e catálogo; corpos editoriais e SQL não entram nos chunks do navegador.
+- Próximo corte recomendado: validar o adapter D1 em preview isolado e implementar o publicador transacional antes de qualquer CRUD real.
 
 ## Spike — vídeo novo para artigo e carrossel
 
