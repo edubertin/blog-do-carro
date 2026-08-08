@@ -14,7 +14,7 @@ Construir um portal automotivo brasileiro com experiência de aplicativo, priori
 - Identidade Deu Negócio: preto `#0D0D0D`, amarelo `#F4B400`, branco e cinzas neutros.
 - Motion discreto, com respeito a `prefers-reduced-motion`.
 - Imagens editoriais responsivas pela API compatível `next/image`, atendida pelo worker Vinext.
-- Produto “Chaveiro Presente” com fluxo de compra demonstrativo, sem cobrança, persistência ou envio.
+- Loja da comunidade com chaveiro e miniatura conceitual para impressão 3D, em fluxo demonstrativo sem cobrança, persistência ou envio.
 - Domínio canônico definitivo `https://blogdocarro.com`.
 - Mercado Pago como único destino futuro de pagamento, exclusivamente para Pix e ainda bloqueado.
 - Categorias sem conteúdo publicado permanecem vazias; o produto não gera artigos com IA para preenchê-las.
@@ -79,7 +79,7 @@ Categorias sem artigos publicados exibem um estado vazio honesto. Nenhum artigo 
 - Home responsiva baseada na direção visual escolhida.
 - Menu, busca, categorias e navegação inferior funcionais.
 - Página completa de artigo e páginas institucionais.
-- Página do Chaveiro Presente com preço ilustrativo, quantidade e entrada no carrinho.
+- Vitrine do chaveiro e da miniatura Blog do Carro com preço ilustrativo, quantidade e entrada no carrinho.
 - Carrossel editorial sincronizável com os quatro vídeos mais recentes do canal Deu Negócio.
 - Loja da Comunidade com catálogo inicial e jornada demonstrativa até a confirmação.
 - Metadados, Open Graph, dados estruturados e rotas amigáveis.
@@ -102,7 +102,7 @@ Categorias sem artigos publicados exibem um estado vazio honesto. Nenhum artigo 
 
 ### Fase 3 — comércio
 
-- Catálogo, estoque e variações do Chaveiro Presente.
+- Catálogo, estoque e variações dos produtos da Loja da comunidade.
 - Carrinho e checkout no servidor seguindo o padrão já validado no Plimcor.
 - Acesso passwordless por magic link e área **Meus pedidos**, conforme `docs/specs/customer-order-portal.md`.
 - Adaptadores isolados para Login Mercado Livre, Mercado Pago exclusivamente para Pix e Meu Envio após homologação.

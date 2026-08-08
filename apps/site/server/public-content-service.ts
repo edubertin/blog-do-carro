@@ -64,3 +64,7 @@ export async function searchPublishedArticles(query: string, limit = 8): Promise
 export const getCatalogProduct = cache(async (slug: string): Promise<CatalogProduct | null> => {
   return catalogRepository.findCatalogProductBySlug(slug);
 });
+
+export const listCatalogProducts = cache(async (): Promise<readonly CatalogProduct[]> => {
+  return catalogRepository.listCatalogProducts();
+});

@@ -68,8 +68,7 @@ const htmlRoutes = [
   ["/artigos/moto-por-spin-financiada-bom-negocio", /Minha opinião/i],
   ["/categoria/negociacoes", /Conteúdo direto/i],
   ["/categoria/sedan", /Garagem em preparação/i],
-  ["/loja", /Coleção Presença/i],
-  ["/loja/chaveiro-presente", /Compra simulada/i],
+  ["/loja", /Chaveiro Blog do Carro/i],
   ["/carrinho", /Preparando seu carrinho/i],
   ["/checkout", /Checkout demonstrativo/i],
   ["/sobre", /Informação com contexto/i],
@@ -105,6 +104,19 @@ test("server-renders the public route matrix", async (contextTest) => {
       assert.match(html, expectedContent);
     });
   }
+});
+
+test("renders the approved two-product storefront without retired copy", async () => {
+  const worker = await loadWorker();
+  const responses = await Promise.all([
+    fetchRoute(worker, "/"),
+    fetchRoute(worker, "/loja"),
+  ]);
+  const storefrontHtml = (await Promise.all(responses.map((response) => response.text()))).join("\n");
+  assert.match(storefrontHtml, /chaveiro-blog-do-carro/i);
+  assert.match(storefrontHtml, /miniatura-blog-do-carro/i);
+  assert.doesNotMatch(storefrontHtml, /Chaveiro Presente/i);
+  assert.doesNotMatch(storefrontHtml, /Coleção Presença/i);
 });
 
 test("serves crawler metadata", async () => {
@@ -334,7 +346,7 @@ test("supports the temporary normalized owner email bootstrap without exposing i
   assert.equal(access.identity.displayName, "Administrador");
 });
 
-test("fails closed when owner bootstrap or stable Sites identity is absent", async () => {
+test("supports default email bootstrap when owner ID allowlist is absent", async () => {
   const { resolveAdminAccess } = await loadAdminAuthCore();
   const identity = new Headers({ "oai-authenticated-user-id": "owner-alpha" });
   assert.equal(resolveAdminAccess(identity, "blogdocarro.com", {}).kind, "misconfigured");
@@ -352,7 +364,7 @@ test("fails closed when owner bootstrap or stable Sites identity is absent", asy
     "blogdocarro.com",
     { emailAllowlist: "owner@example.com" },
   );
-  assert.equal(disabledEmailBootstrap.kind, "misconfigured");
+  assert.equal(disabledEmailBootstrap.kind, "allowed");
 });
 
 test("limits local admin preview to exact loopback hosts", async () => {

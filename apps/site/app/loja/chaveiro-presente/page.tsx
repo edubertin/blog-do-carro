@@ -11,8 +11,8 @@ import { Reveal } from "@/app/components/motion";
 import { getCatalogProduct } from "@/server/public-content-service";
 
 export const metadata: Metadata = {
-  title: "Chaveiro Presente",
-  description: "Conheça o fluxo demonstrativo de compra do Chaveiro Presente da comunidade Blog do Carro.",
+  title: "Chaveiro Blog do Carro",
+  description: "Conheça o conceito em impressão 3D e o fluxo demonstrativo de compra do chaveiro Blog do Carro.",
   alternates: { canonical: "/loja/chaveiro-presente" },
 };
 
@@ -23,7 +23,7 @@ const benefits = [
 ] as const;
 
 export default async function ProductPage(): Promise<ReactElement> {
-  const product = await getCatalogProduct("chaveiro-presente");
+  const product = await getCatalogProduct("chaveiro-blog-do-carro");
   if (!product) notFound();
   return (
     <main className="productPage">

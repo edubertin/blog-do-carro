@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import { getCatalogProduct } from "@/server/public-content-service";
+import { listCatalogProducts } from "@/server/public-content-service";
 import { CartPage } from "./cart-page";
 
 export const metadata: Metadata = {
@@ -10,7 +9,6 @@ export const metadata: Metadata = {
 };
 
 export default async function CartRoute(): Promise<ReactElement> {
-  const product = await getCatalogProduct("chaveiro-presente");
-  if (!product) notFound();
-  return <main className="commercePage"><CartPage product={product} /></main>;
+  const products = await listCatalogProducts();
+  return <main className="commercePage"><CartPage products={products} /></main>;
 }

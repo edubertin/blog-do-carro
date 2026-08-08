@@ -10,5 +10,5 @@ export const metadata: Metadata = {
 };
 
 export default function MarketplacePage(): ReactElement {
-  return <SimplePage eyebrow="Em preparação" title="O próximo negócio começa aqui." intro="A arquitetura já reserva espaço para anúncios, favoritos, comparador e área do anunciante."><h2>Primeiro produto da garagem</h2><p>Conheça o Chaveiro Presente e experimente o fluxo demonstrativo de compra da primeira edição da comunidade.</p><Link className="primaryButton inlineButton" href="/loja/chaveiro-presente">Conhecer o chaveiro</Link></SimplePage>;
+  return <SimplePage eyebrow="Em preparação" title="O próximo negócio começa aqui." intro="A arquitetura já reserva espaço para anúncios, favoritos, comparador e área do anunciante."><h2>Produtos da garagem</h2><p>Conheça os primeiros conceitos em impressão 3D da Loja da comunidade.</p><Link className="primaryButton inlineButton" href="/loja">Conhecer a loja</Link></SimplePage>;
 }

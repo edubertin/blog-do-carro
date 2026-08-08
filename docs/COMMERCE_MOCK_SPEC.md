@@ -1,8 +1,8 @@
-# Mock de compra — Chaveiro Presente
+# Mock de compra — Loja da comunidade
 
 ## Objetivo
 
-Validar a experiência completa de compra do primeiro produto da comunidade antes de conectar autenticação, pagamento, logística ou persistência de pedidos.
+Validar a experiência completa de compra do chaveiro e da miniatura Blog do Carro antes de conectar autenticação, pagamento, logística ou persistência de pedidos.
 
 O fluxo é deliberadamente demonstrativo. Nenhuma tela pode criar cobrança, etiqueta, rastreio, pedido persistente ou envio.
 

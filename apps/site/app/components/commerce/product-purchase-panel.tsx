@@ -5,7 +5,7 @@ import { ShieldCheck } from "@phosphor-icons/react/ShieldCheck";
 import { useState } from "react";
 import type { FormEvent, ReactElement } from "react";
 import { useCart } from "@/app/commerce/cart-provider";
-import { formatMoney } from "@/app/commerce/catalog";
+import { formatMoney, isProductId } from "@/app/commerce/catalog";
 import type { CatalogProduct } from "@/db/contracts";
 import { QuantityControl } from "./quantity-control";
 
@@ -16,9 +16,9 @@ export function ProductPurchasePanel({ product }: Readonly<{ product: CatalogPro
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    if (moving) return;
+    if (moving || !isProductId(product.slug)) return;
     setMoving(true);
-    addProduct(quantity);
+    addProduct(product.slug, quantity);
     window.location.assign("/carrinho");
   }
 
