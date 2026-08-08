@@ -31,6 +31,7 @@ export type AdminArticleSummary = Readonly<{
   state: ArticleRevisionState;
   version: number;
   updatedAt: number;
+  videoAvailability: "pending" | "ready";
 }>;
 
 export type ProductDraftInput = Readonly<{

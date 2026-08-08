@@ -7,6 +7,8 @@ export type ImageBlock = Readonly<{
   alt: string;
   caption?: string;
   alignment: "inline" | "wide";
+  width?: number;
+  height?: number;
 }>;
 
 export type ArticleBlock = ParagraphBlock | HeadingBlock | ImageBlock;
@@ -33,6 +35,9 @@ function validBlock(value: unknown): value is ArticleBlock {
   if (value.type === "heading") return (value.level === 2 || value.level === 3) && typeof value.text === "string";
   return value.type === "image" && typeof value.assetId === "string" && typeof value.alt === "string"
     && (value.caption === undefined || typeof value.caption === "string")
+    && (value.width === undefined || (typeof value.width === "number" && Number.isInteger(value.width) && value.width > 0 && value.width <= 12000))
+    && (value.height === undefined || (typeof value.height === "number" && Number.isInteger(value.height) && value.height > 0 && value.height <= 12000))
+    && ((value.width === undefined) === (value.height === undefined))
     && (value.alignment === "inline" || value.alignment === "wide");
 }
 

@@ -35,12 +35,19 @@ function integer(row: D1Row, key: string): number {
   return value;
 }
 
+function videoAvailability(row: D1Row): "pending" | "ready" {
+  const value = text(row, "video_availability");
+  if (value === "pending" || value === "ready") return value;
+  throw new Error("Disponibilidade de vídeo inválida no D1.");
+}
+
 function articleSummary(row: D1Row): AdminArticleSummary {
   return {
     id: text(row, "id"), revisionId: text(row, "revision_id"), slug: text(row, "slug"),
     title: text(row, "title"), category: text(row, "category"),
     state: text(row, "workflow_state") as AdminArticleSummary["state"],
     version: integer(row, "version"), updatedAt: integer(row, "updated_at"),
+    videoAvailability: videoAvailability(row),
   };
 }
 
@@ -92,10 +99,24 @@ async function categoryId(database: D1Database, slug: string): Promise<string> {
   return text(row, "id");
 }
 
-async function videoId(database: D1Database, externalId: string): Promise<string> {
-  const row = await database.prepare("SELECT id FROM youtube_videos WHERE external_id = ? LIMIT 1").bind(externalId).first();
-  if (!row) throw invalidInput("O vídeo ainda não está cadastrado no CMS.");
-  return text(row, "id");
+async function resolveOrCreatePendingVideo(
+  context: AdminWriteContext,
+  principalId: string,
+  externalId: string,
+  posterUrl: string,
+): Promise<Readonly<{ id: string; availability: "pending" | "ready" }>> {
+  const query = "SELECT id, import_state FROM youtube_videos WHERE provider = 'youtube' AND external_id = ? LIMIT 1";
+  const existing = await context.database.prepare(query).bind(externalId).first();
+  if (existing) return { id: text(existing, "id"), availability: text(existing, "import_state") === "imported" ? "ready" : "pending" };
+  const id = crypto.randomUUID();
+  const now = Date.now();
+  await context.database.batch([
+    context.database.prepare("INSERT OR IGNORE INTO youtube_videos (id, provider, external_id, channel_handle, source_title, source_published_at, poster_url, import_state, detected_at, last_synced_at) VALUES (?, 'youtube', ?, '@negociobaum', 'Vídeo aguardando publicação', NULL, ?, 'detected', ?, NULL)").bind(id, externalId, posterUrl, now),
+    auditStatement(context, principalId, "content.write", "youtube_video.pending.created", "youtube_video", externalId),
+  ]);
+  const resolved = await context.database.prepare(query).bind(externalId).first();
+  if (!resolved) throw new Error("Não foi possível registrar a origem pendente do YouTube.");
+  return { id: text(resolved, "id"), availability: text(resolved, "import_state") === "imported" ? "ready" : "pending" };
 }
 
 function articleStatements(
@@ -179,12 +200,12 @@ function revisedArticleStatements(
 export async function createArticleDraft(context: AdminWriteContext, input: ArticleDraftInput): Promise<AdminArticleSummary> {
   const principal = await ensurePrincipal(context);
   const category = await categoryId(context.database, input.categorySlug);
-  const video = await videoId(context.database, input.youtubeVideoId);
   const existing = input.articleId ? await existingArticle(context.database, input.articleId) : null;
   await assertMediaAvailable(context.database, input);
   await assertSlugAvailable(context.database, input.slug, input.articleId);
-  await assertVideoAvailable(context.database, video, input.articleId);
-  const ids = { article: existing ? text(existing, "id") : crypto.randomUUID(), revision: crypto.randomUUID(), category, video, principal };
+  const video = await resolveOrCreatePendingVideo(context, principal, input.youtubeVideoId, input.imageUrl);
+  await assertVideoAvailable(context.database, video.id, input.articleId);
+  const ids = { article: existing ? text(existing, "id") : crypto.randomUUID(), revision: crypto.randomUUID(), category, video: video.id, principal };
   const version = existing ? integer(existing, "version") + 1 : 1;
   if (existing) {
     await context.database.batch([...revisedArticleStatements(context, input, ids, integer(existing, "revision_number") + 1), ...mediaStatements(context.database, ids.revision, input)]);
@@ -193,7 +214,7 @@ export async function createArticleDraft(context: AdminWriteContext, input: Arti
   }
   return {
     id: ids.article, revisionId: ids.revision, slug: input.slug, title: input.title,
-    category: input.categorySlug, state: "draft", version, updatedAt: Date.now(),
+    category: input.categorySlug, state: "draft", version, updatedAt: Date.now(), videoAvailability: video.availability,
   };
 }
 
@@ -203,7 +224,7 @@ function articleBody(row: D1Row, key: string): ArticleDraftInput["body"] {
 }
 
 export async function getAdminArticle(database: D1Database, articleId: string): Promise<AdminArticleEditorRecord> {
-  const query = "SELECT a.id, a.slug, a.version, a.updated_at, r.id AS revision_id, r.title, r.subtitle, r.seo_description, r.body_json, r.opinion, r.image_url, r.image_alt, r.read_time_minutes, r.workflow_state, c.name AS category, c.slug AS category_slug, y.external_id AS youtube_video_id FROM articles a JOIN article_revisions r ON r.id = a.working_revision_id JOIN article_revision_categories arc ON arc.revision_id = r.id AND arc.is_primary = 1 JOIN categories c ON c.id = arc.category_id JOIN youtube_videos y ON y.id = a.source_video_id WHERE a.id = ? AND a.lifecycle_state <> 'archived' LIMIT 1";
+  const query = "SELECT a.id, a.slug, a.version, a.updated_at, r.id AS revision_id, r.title, r.subtitle, r.seo_description, r.body_json, r.opinion, r.image_url, r.image_alt, r.read_time_minutes, r.workflow_state, c.name AS category, c.slug AS category_slug, y.external_id AS youtube_video_id, CASE WHEN y.import_state = 'imported' THEN 'ready' ELSE 'pending' END AS video_availability FROM articles a JOIN article_revisions r ON r.id = a.working_revision_id JOIN article_revision_categories arc ON arc.revision_id = r.id AND arc.is_primary = 1 JOIN categories c ON c.id = arc.category_id JOIN youtube_videos y ON y.id = a.source_video_id WHERE a.id = ? AND a.lifecycle_state <> 'archived' LIMIT 1";
   const row = await database.prepare(query).bind(articleId).first();
   if (!row) throw missingResource("Artigo editorial não encontrado.");
   const faqResult = await database.prepare("SELECT question, answer FROM article_revision_faqs WHERE revision_id = ? ORDER BY position").bind(text(row, "revision_id")).all();
@@ -215,7 +236,7 @@ export async function getAdminArticle(database: D1Database, articleId: string): 
 }
 
 export async function listAdminArticles(database: D1Database): Promise<readonly AdminArticleSummary[]> {
-  const query = "SELECT a.id, a.slug, a.version, a.updated_at, r.id AS revision_id, r.title, r.workflow_state, c.name AS category FROM articles a JOIN article_revisions r ON r.id = a.working_revision_id JOIN article_revision_categories arc ON arc.revision_id = r.id AND arc.is_primary = 1 JOIN categories c ON c.id = arc.category_id WHERE a.lifecycle_state <> 'archived' ORDER BY a.updated_at DESC";
+  const query = "SELECT a.id, a.slug, a.version, a.updated_at, r.id AS revision_id, r.title, r.workflow_state, c.name AS category, CASE WHEN y.import_state = 'imported' THEN 'ready' ELSE 'pending' END AS video_availability FROM articles a JOIN article_revisions r ON r.id = a.working_revision_id JOIN article_revision_categories arc ON arc.revision_id = r.id AND arc.is_primary = 1 JOIN categories c ON c.id = arc.category_id JOIN youtube_videos y ON y.id = a.source_video_id WHERE a.lifecycle_state <> 'archived' ORDER BY a.updated_at DESC";
   const result = await database.prepare(query).all();
   return result.results.map(articleSummary);
 }
@@ -238,7 +259,7 @@ function normalizedSearchText(value: string): string {
 }
 
 async function publicationSource(database: D1Database, articleId: string): Promise<D1Row> {
-  const query = "SELECT a.id, a.slug, a.working_revision_id AS revision_id, r.workflow_state, r.title, r.subtitle, r.seo_description, r.body_json, r.opinion, r.image_url, r.image_alt, r.read_time_minutes, c.id AS category_id, c.name AS category_name, c.slug AS category_slug, y.external_id AS youtube_video_external_id FROM articles a JOIN article_revisions r ON r.id = a.working_revision_id JOIN article_revision_categories arc ON arc.revision_id = r.id AND arc.is_primary = 1 JOIN categories c ON c.id = arc.category_id JOIN youtube_videos y ON y.id = a.source_video_id WHERE a.id = ? AND a.lifecycle_state <> 'archived' LIMIT 1";
+  const query = "SELECT a.id, a.slug, a.working_revision_id AS revision_id, r.workflow_state, r.title, r.subtitle, r.seo_description, r.body_json, r.opinion, r.image_url, r.image_alt, r.read_time_minutes, c.id AS category_id, c.name AS category_name, c.slug AS category_slug, y.external_id AS youtube_video_external_id, CASE WHEN y.import_state = 'imported' THEN 'ready' ELSE 'pending' END AS video_availability FROM articles a JOIN article_revisions r ON r.id = a.working_revision_id JOIN article_revision_categories arc ON arc.revision_id = r.id AND arc.is_primary = 1 JOIN categories c ON c.id = arc.category_id JOIN youtube_videos y ON y.id = a.source_video_id WHERE a.id = ? AND a.lifecycle_state <> 'archived' LIMIT 1";
   const row = await database.prepare(query).bind(articleId).first();
   if (!row) throw missingResource("Rascunho editorial não encontrado.");
   return row;
@@ -255,8 +276,8 @@ function projectionStatement(context: AdminWriteContext, source: D1Row, faqJson:
   const bodyJson = text(source, "body_json");
   const searchable = normalizedSearchText([text(source, "title"), text(source, "subtitle"), text(source, "category_name"), articleText(articleBody(source, "body_json"))].join(" "));
   const video = source.youtube_video_external_id === null ? null : text(source, "youtube_video_external_id");
-  const sql = "INSERT INTO published_article_projections (article_id, revision_id, slug, category_name, category_slug, title, subtitle, seo_description, search_text, image_url, image_alt, youtube_video_external_id, date_label, body_json, opinion, faq_json, read_time_minutes, published_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PUBLICADO', ?, ?, ?, ?, ?, ?) ON CONFLICT(article_id) DO UPDATE SET revision_id = excluded.revision_id, slug = excluded.slug, category_name = excluded.category_name, category_slug = excluded.category_slug, title = excluded.title, subtitle = excluded.subtitle, seo_description = excluded.seo_description, search_text = excluded.search_text, image_url = excluded.image_url, image_alt = excluded.image_alt, youtube_video_external_id = excluded.youtube_video_external_id, date_label = excluded.date_label, body_json = excluded.body_json, opinion = excluded.opinion, faq_json = excluded.faq_json, read_time_minutes = excluded.read_time_minutes, published_at = COALESCE(published_article_projections.published_at, excluded.published_at), updated_at = excluded.updated_at";
-  return context.database.prepare(sql).bind(text(source, "id"), text(source, "revision_id"), text(source, "slug"), text(source, "category_name"), text(source, "category_slug"), text(source, "title"), text(source, "subtitle"), text(source, "seo_description"), searchable, text(source, "image_url"), text(source, "image_alt"), video, bodyJson, text(source, "opinion"), faqJson, integer(source, "read_time_minutes"), now, now);
+  const sql = "INSERT INTO published_article_projections (article_id, revision_id, slug, category_name, category_slug, title, subtitle, seo_description, search_text, image_url, image_alt, youtube_video_external_id, video_availability, date_label, body_json, opinion, faq_json, read_time_minutes, published_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PUBLICADO', ?, ?, ?, ?, ?, ?) ON CONFLICT(article_id) DO UPDATE SET revision_id = excluded.revision_id, slug = excluded.slug, category_name = excluded.category_name, category_slug = excluded.category_slug, title = excluded.title, subtitle = excluded.subtitle, seo_description = excluded.seo_description, search_text = excluded.search_text, image_url = excluded.image_url, image_alt = excluded.image_alt, youtube_video_external_id = excluded.youtube_video_external_id, video_availability = excluded.video_availability, date_label = excluded.date_label, body_json = excluded.body_json, opinion = excluded.opinion, faq_json = excluded.faq_json, read_time_minutes = excluded.read_time_minutes, published_at = COALESCE(published_article_projections.published_at, excluded.published_at), updated_at = excluded.updated_at";
+  return context.database.prepare(sql).bind(text(source, "id"), text(source, "revision_id"), text(source, "slug"), text(source, "category_name"), text(source, "category_slug"), text(source, "title"), text(source, "subtitle"), text(source, "seo_description"), searchable, text(source, "image_url"), text(source, "image_alt"), video, text(source, "video_availability"), bodyJson, text(source, "opinion"), faqJson, integer(source, "read_time_minutes"), now, now);
 }
 
 async function assertRevisionMediaPublishable(database: D1Database, revisionId: string): Promise<void> {
@@ -284,6 +305,12 @@ export async function publishArticle(context: AdminWriteContext, articleId: stri
     context.database.prepare("UPDATE media_assets SET lifecycle_state = 'published', updated_at = ? WHERE id IN (SELECT media_asset_id FROM article_revision_media WHERE revision_id = ?) AND lifecycle_state = 'staged'").bind(now, revisionId),
     auditStatement(context, principal, "content.publish", "article.published", "article", articleId),
   ]);
+}
+
+export async function revisionMediaObjectKeys(database: D1Database, articleId: string): Promise<readonly string[]> {
+  const query = "SELECT m.object_key FROM articles a JOIN article_revision_media arm ON arm.revision_id = a.working_revision_id JOIN media_assets m ON m.id = arm.media_asset_id WHERE a.id = ? AND m.lifecycle_state IN ('staged', 'published')";
+  const result = await database.prepare(query).bind(articleId).all();
+  return result.results.map((row) => text(row, "object_key"));
 }
 
 export async function submitArticleForReview(context: AdminWriteContext, articleId: string): Promise<void> {

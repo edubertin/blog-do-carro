@@ -201,6 +201,7 @@ A especificação completa do painel, RBAC, audit log, conectores e limites do m
 - Usar a playlist de uploads como rotina de reconciliação, evitando duplicidade por `youtubeVideoId`.
 - Manter o hero com imagem estática otimizada no carregamento inicial. Uma prévia silenciosa de cinco segundos pode ser testada depois, apenas para o item ativo e sem prejudicar dados móveis ou acessibilidade.
 - Tratar o título original do YouTube como fonte; pergunta, chamada e análise permanecem campos editoriais separados.
+- URLs ou IDs válidos ainda ausentes em `youtube_videos` são registrados idempotentemente como origem `detected`; isso não bloqueia rascunho, revisão ou publicação. A projeção pública usa `video_availability: pending | ready`, mostra um estado de preparação sem iframe para pendentes e mantém o hero restrito a vídeos `imported`.
 
 ## Spike — Loja da Comunidade
 
