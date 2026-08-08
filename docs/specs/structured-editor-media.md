@@ -28,9 +28,9 @@ HTML livre, scripts, URLs administrativas e código arbitrário são rejeitados.
 
 ## Experiência do editor
 
-- Um botão `+` entre blocos adiciona texto, subtítulo ou imagem.
-- No celular, o seletor abre como folha inferior e aceita câmera, galeria ou arquivo.
-- Upload mostra progresso e não bloqueia a edição dos outros blocos.
+- Pontos de inserção antes, entre e depois dos blocos adicionam texto, subtítulo ou imagem na posição escolhida.
+- No celular, os controles permanecem no fluxo do artigo e aceitam câmera, galeria ou arquivo pelo seletor nativo.
+- Durante o upload, movimentação e salvamento ficam bloqueados para preservar a posição e impedir revisões incompletas.
 - Imagem inserida pode ser substituída, movida, legendada ou removida do artigo.
 - Texto alternativo é obrigatório; legenda é opcional.
 - Mover para cima/baixo funciona por toque e teclado; drag-and-drop é apenas conveniência futura.
