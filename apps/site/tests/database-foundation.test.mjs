@@ -5,6 +5,7 @@ import test from "node:test";
 
 const foundationMigrationSql = readFileSync(new URL("../drizzle/0001_d1_foundation.sql", import.meta.url), "utf8");
 const cmsMigrationSql = readFileSync(new URL("../drizzle/0002_cms_media.sql", import.meta.url), "utf8");
+const catalogMigrationSql = readFileSync(new URL("../drizzle/0003_community_store_catalog.sql", import.meta.url), "utf8");
 const seedSql = readFileSync(new URL("../drizzle/0001_foundation_seed.sql", import.meta.url), "utf8");
 const hostingConfig = JSON.parse(readFileSync(new URL("../.openai/hosting.json", import.meta.url), "utf8"));
 
@@ -13,6 +14,7 @@ function foundationDatabase() {
   database.exec(foundationMigrationSql);
   database.exec(seedSql);
   database.exec(cmsMigrationSql);
+  database.exec(catalogMigrationSql);
   return database;
 }
 
@@ -50,8 +52,12 @@ test("seeds only non-sensitive editorial and preview catalog data", () => {
   assert.equal(database.prepare("SELECT lifecycle_state FROM articles").get().lifecycle_state, "draft");
   assert.equal(database.prepare("SELECT COUNT(*) AS count FROM published_article_projections").get().count, 0);
   assert.deepEqual(
-    { ...database.prepare("SELECT status, price_cents, price_kind, inventory_mode FROM product_variants").get() },
-    { status: "preview", price_cents: 2990, price_kind: "illustrative", inventory_mode: "untracked" },
+    database.prepare("SELECT slug FROM products ORDER BY updated_at DESC").all().map((row) => row.slug),
+    ["chaveiro-blog-do-carro", "miniatura-blog-do-carro"],
+  );
+  assert.deepEqual(
+    database.prepare("SELECT price_cents FROM product_variants ORDER BY price_cents").all().map((row) => row.price_cents),
+    [2990, 4990],
   );
   assert.deepEqual(
     { ...database.prepare("SELECT mode, checkout_enabled FROM store_settings WHERE id = 1").get() },
