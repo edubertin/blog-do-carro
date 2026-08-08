@@ -320,7 +320,7 @@ function WorkflowActions(props: WorkflowActionsProps): ReactElement {
       <h2>6. Revisão e publicação</h2><p>O rascunho “{props.article.title}” está salvo. Revise o conteúdo antes de enviá-lo para publicação.</p>
       {canPublish ? <label className="adminPublishConfirmation"><input type="checkbox" checked={props.confirmed} disabled={busy || published} onChange={(event) => props.onConfirm(event.currentTarget.checked)} /> Confirmo título, conteúdo, vídeo, imagem, SEO, opinião e FAQ.</label> : null}
       <div className="adminFormActions">
-        {!published ? <button className="adminButton adminButton--secondary" type="button" disabled={busy || inReview} onClick={props.onEdit}>Editar conteúdo</button> : null}
+        <button className="adminButton adminButton--secondary" type="button" disabled={busy || inReview} onClick={props.onEdit}>{published ? "Criar nova revisão" : "Editar conteúdo"}</button>
         {!inReview && !published ? <button className="adminButton adminButton--primary" type="button" disabled={busy} onClick={props.onReview}>{props.phase === "reviewing" ? "Enviando…" : "Enviar para revisão"}</button> : null}
         {canPublish ? <button className="adminButton adminButton--primary" type="button" disabled={!props.confirmed || busy || published} onClick={props.onPublish}>{published ? "Artigo publicado" : publishing ? "Publicando…" : "Publicar artigo"}</button> : null}
         <FeedbackMessage feedback={props.feedback} />
@@ -358,7 +358,8 @@ export function ArticleEditor(): ReactElement {
     }
     loadEditorRecord(requestedArticleId).then((record) => {
       if (!active) return;
-      setArticle(record.article); setInitialDraft(record.draft); setPhase("editing");
+      const published = record.article.state === "published";
+      setArticle(record.article); setInitialDraft(record.draft); setEditingSaved(!published); setPhase(published ? "published" : "editing");
     }).catch((error: unknown) => {
       console.error("Falha ao carregar artigo para revisão.", error);
       if (active) setLoadFailure(error instanceof Error ? error.message : "Não foi possível carregar o artigo.");
@@ -376,6 +377,7 @@ export function ArticleEditor(): ReactElement {
       const message = saved.videoAvailability === "pending"
         ? "Vídeo adicionado como origem pendente. Os dados serão sincronizados quando ele estiver público."
         : "Rascunho salvo. Revise e envie para aprovação.";
+      window.history.replaceState(null, "", `/admin/artigos/novo?article=${encodeURIComponent(saved.id)}`);
       setArticle(saved); setEditingSaved(false); setPhase("ready"); setFeedback({ kind: "success", message });
     } catch (error) {
       console.error("Falha ao criar rascunho editorial.", error);
@@ -403,6 +405,13 @@ export function ArticleEditor(): ReactElement {
       const result = await sendJson(`/api/admin/articles/${encodeURIComponent(article.id)}/publish`, {});
       if (!result.response.ok) throw new Error(apiError(result.payload, "Não foi possível publicar o artigo."));
       setPhase("published"); setFeedback({ kind: "success", message: "Artigo publicado e projeção pública atualizada." });
+      try {
+        const record = await loadEditorRecord(article.id);
+        setArticle(record.article); setInitialDraft(record.draft);
+      } catch (refreshError) {
+        console.error("O artigo foi publicado, mas o editor precisa recarregar a versão atual.", refreshError);
+        window.location.reload();
+      }
     } catch (error) {
       console.error("Falha ao publicar artigo.", error);
       setPhase("ready"); setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Não foi possível publicar o artigo." });
