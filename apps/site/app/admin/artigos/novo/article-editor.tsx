@@ -345,21 +345,26 @@ export function ArticleEditor(): ReactElement {
   const [editingSaved, setEditingSaved] = useState(true);
   const [confirmed, setConfirmed] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
-  const [requestedArticleId] = useState(() => typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("article"));
-  const [loading, setLoading] = useState(requestedArticleId !== null);
+  const [loading, setLoading] = useState(true);
+  const [loadFailure, setLoadFailure] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
-    if (!requestedArticleId) return;
+    const requestedArticleId = new URLSearchParams(window.location.search).get("article");
     let active = true;
+    if (!requestedArticleId) {
+      queueMicrotask(() => { if (active) setLoading(false); });
+      return () => { active = false; };
+    }
     loadEditorRecord(requestedArticleId).then((record) => {
       if (!active) return;
       setArticle(record.article); setInitialDraft(record.draft); setPhase("editing");
     }).catch((error: unknown) => {
       console.error("Falha ao carregar artigo para revisão.", error);
-      if (active) setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Não foi possível carregar o artigo." });
+      if (active) setLoadFailure(error instanceof Error ? error.message : "Não foi possível carregar o artigo.");
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [requestedArticleId]);
+  }, [loadAttempt]);
 
   async function createDraft(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault(); setPhase("saving"); setFeedback(null);
@@ -420,6 +425,7 @@ export function ArticleEditor(): ReactElement {
   }
 
   if (loading) return <div className="adminEmpty" role="status"><strong>Carregando artigo…</strong></div>;
+  if (loadFailure) return <div className="adminEmpty" role="alert"><strong>Não foi possível abrir este artigo.</strong><p>{loadFailure}</p><div className="adminFormActions"><button type="button" className="adminButton adminButton--primary" onClick={() => { setLoadFailure(null); setLoading(true); setLoadAttempt((current) => current + 1); }}>Tentar novamente</button><a className="adminButton adminButton--secondary" href="/admin/artigos">Voltar aos artigos</a></div></div>;
   const draftLocked = article !== null && !editingSaved;
   return (
     <div className="adminEditorLayout"><AdminCard><form key={article?.revisionId ?? initialDraft?.articleId ?? "new"} onSubmit={createDraft} aria-busy={phase === "saving" || phase === "reviewing" || phase === "publishing"}><fieldset disabled={draftLocked} style={{ border: 0, margin: 0, padding: 0 }}><VideoSourceSection draft={initialDraft} /><EditorialSection draft={initialDraft} /><ImageSection draft={initialDraft} /><OpinionAndFaqSection draft={initialDraft} /><SeoSection draft={initialDraft} /></fieldset>{article && !editingSaved ? <WorkflowActions phase={phase} article={article} confirmed={confirmed} feedback={feedback} onConfirm={setConfirmed} onEdit={editSavedDraft} onReview={submitForReview} onPublish={publish} /> : <DraftActions phase={phase} feedback={feedback} />}</form></AdminCard>{article ? <RevisionHistory article={article} onRestored={reloadRestoredDraft} /> : null}</div>

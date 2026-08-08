@@ -129,10 +129,21 @@ test("artigo percorre rascunho, revisão e publicação", async ({ page }) => {
 });
 
 test("editar artigo carrega a revisão pelo identificador", async ({ page }) => {
+  let attempts = 0;
   const article = { id: "article-test", revisionId: "revision-test", slug: "artigo-existente", title: "Artigo existente no CMS", category: "Negociações", state: "draft", version: 2, updatedAt: Date.now(), videoAvailability: "ready" };
   const draft = { articleId: "article-test", title: article.title, subtitle: "Subtítulo existente suficientemente completo.", slug: article.slug, seoDescription: "Descrição existente suficientemente completa para os resultados de busca do portal.", categorySlug: "negociacoes", body: ["Conteúdo existente do artigo com tamanho suficiente para continuar a edição no painel administrativo sem perder dados."], opinion: "Opinião existente suficientemente completa.", imageUrl: "/images/articles/hero-negociacoes.png", imageAlt: "Imagem existente do artigo", youtubeVideoId: "jT0j_rCgbbc", readTimeMinutes: 5, faq: [{ question: "Pergunta existente no artigo?", answer: "Resposta existente no artigo." }] };
-  await page.route("**/api/admin/articles/article-test", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ article, draft }) }));
+  await page.route("**/api/admin/articles/article-test", (route) => {
+    attempts += 1;
+    return attempts === 1
+      ? route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "Leitura temporariamente indisponível." }) })
+      : route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ article, draft }) });
+  });
   await page.goto("/admin/artigos/novo?article=article-test", { waitUntil: "networkidle" });
+  await expect(page.getByRole("alert")).toContainText("Não foi possível abrir este artigo.");
+  await expect(page.getByRole("button", { name: "Salvar rascunho" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Tentar novamente" }).click();
+  await expect(page.getByRole("textbox", { name: "Título", exact: true })).toHaveValue(article.title);
+  await page.reload({ waitUntil: "networkidle" });
   await expect(page.getByRole("textbox", { name: "Título", exact: true })).toHaveValue(article.title);
   await expect(page.locator('[name="slug"]')).toHaveValue(article.slug);
   await expect(page.locator('[name="youtubeUrl"]')).toHaveValue("jT0j_rCgbbc");
