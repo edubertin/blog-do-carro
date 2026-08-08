@@ -131,7 +131,7 @@ function ProductForm({ busy, onCreate, onCancel }: ProductFormProps): ReactEleme
         <label className="adminField"><span>Slug</span><input name="slug" required maxLength={120} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="produto-da-comunidade" /></label>
         <label className="adminField"><span>SKU</span><input name="sku" required maxLength={80} placeholder="COM-DEMO-01" /></label>
         <label className="adminField"><span>Preço ilustrativo (R$)</span><input name="price" required type="number" min="0" max="1000000" step="0.01" inputMode="decimal" placeholder="29,90" /></label>
-        <label className="adminField"><span>Coleção</span><input name="collectionName" required maxLength={160} placeholder="Coleção Presença · Edição 01" /></label>
+        <label className="adminField"><span>Linha</span><input name="collectionName" required maxLength={160} placeholder="Loja da comunidade" /></label>
         <label className="adminField"><span>Caminho ou URL da imagem</span><input name="imageUrl" required maxLength={500} placeholder="/images/products/produto.png" /></label>
       </div>
       <div className="adminFieldGrid" style={{ marginTop: 14 }}>

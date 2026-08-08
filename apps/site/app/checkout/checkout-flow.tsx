@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ArrowLeft } from "@phosphor-icons/react/ArrowLeft";
 import { ArrowRight } from "@phosphor-icons/react/ArrowRight";
@@ -8,16 +8,23 @@ import { Package } from "@phosphor-icons/react/Package";
 import { UserCircle } from "@phosphor-icons/react/UserCircle";
 import { SiteLink as Link } from "@/app/components/site-link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, FormEvent, ReactElement, ReactNode, RefObject, SetStateAction } from "react";
+import type { ProductId } from "@/app/commerce/catalog";
 import { useCart } from "@/app/commerce/cart-provider";
 import { formatMoney, shippingById, shippingOptions } from "@/app/commerce/catalog";
 import type { ShippingId } from "@/app/commerce/catalog";
 import { initialAddress, initialBuyer } from "@/app/commerce/checkout-types";
-import type { AddressDetails, BuyerDetails, CheckoutStep } from "@/app/commerce/checkout-types";
+import type { AddressDetails, BuyerDetails, CheckoutStep, DemoOrderLine } from "@/app/commerce/checkout-types";
 import { createDemoOrder, saveDemoOrder } from "@/app/commerce/demo-order-storage";
 import { commerceIntegrations } from "@/app/commerce/integration-config";
 import type { CatalogProduct } from "@/db/contracts";
+
+type CheckoutLine = Readonly<{
+  productId: ProductId;
+  product: CatalogProduct;
+  quantity: number;
+}>;
 
 const stepOrder: readonly CheckoutStep[] = ["identity", "delivery", "payment", "review"];
 
@@ -32,7 +39,7 @@ function useStepHeadingFocus(step: CheckoutStep): RefObject<HTMLElement | null> 
   return stepPanelRef;
 }
 
-export function CheckoutFlow({ product }: Readonly<{ product: CatalogProduct }>): ReactElement {
+export function CheckoutFlow({ catalogProducts }: Readonly<{ catalogProducts: readonly CatalogProduct[] }>): ReactElement {
   const [step, setStep] = useState<CheckoutStep>("identity");
   const [buyer, setBuyer] = useState<BuyerDetails>(initialBuyer);
   const [address, setAddress] = useState<AddressDetails>(initialAddress);
@@ -41,29 +48,47 @@ export function CheckoutFlow({ product }: Readonly<{ product: CatalogProduct }>)
   const stepPanelRef = useStepHeadingFocus(step);
   const { items, ready, clearCart } = useCart();
   const router = useRouter();
-  const item = items[0];
+
+  const lines = useMemo<readonly CheckoutLine[]>(() => {
+    return items.flatMap((item) => {
+      const product = catalogProducts.find((candidate) => candidate.slug === item.productId);
+      return product ? [{ productId: item.productId, product, quantity: item.quantity }] : [];
+    });
+  }, [items, catalogProducts]);
+
+  const orderLines = useMemo<readonly DemoOrderLine[]>(
+    () => lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
+    [lines],
+  );
+
+  const subtotal = useMemo(
+    () => lines.reduce((total, line) => total + line.product.priceCents * line.quantity, 0),
+    [lines],
+  );
 
   async function completeSimulation(): Promise<void> {
-    if (!item || submitting) return;
+    if (lines.length === 0 || submitting) return;
     setSubmitting(true);
     await new Promise<void>((resolve) => window.setTimeout(resolve, 650));
-    const order = createDemoOrder(item.quantity, product.maxPerCart, shippingId);
+    const order = createDemoOrder(orderLines, shippingId);
     saveDemoOrder(order);
     clearCart();
     router.push(`/pedido/demo/${order.id}`);
   }
 
-  if (!ready) return <div className="commerceShell commerceLoading" role="status">Preparando o checkout…</div>;
-  if (!item) return <EmptyCheckout />;
-  const subtotal = product.priceCents * item.quantity;
+  if (!ready) return <div className="commerceShell commerceLoading" role="status">Preparando o checkout...</div>;
+  if (lines.length === 0) return <EmptyCheckout />;
+
   return (
     <div className="commerceShell checkoutShell">
       <DemoNotice />
       <header className="commerceIntro checkoutIntro"><span className="eyebrow">Finalizar demonstração</span><h1>Seu pedido, passo a passo.</h1><p>As informações ficam somente na memória desta página e somem ao fechar ou recarregar o fluxo.</p></header>
       <CheckoutProgress current={step} />
       <div className="checkoutLayout">
-        <section className="checkoutPanel" ref={stepPanelRef}>{renderStep({ step, buyer, address, shippingId, submitting, setBuyer, setAddress, setShippingId, setStep, completeSimulation })}</section>
-        <CheckoutSummary product={product} quantity={item.quantity} subtotal={subtotal} shippingId={shippingId} />
+        <section className="checkoutPanel" ref={stepPanelRef}>
+          {renderStep({ step, buyer, address, shippingId, submitting, setBuyer, setAddress, setShippingId, setStep, completeSimulation })}
+        </section>
+        <CheckoutSummary lines={lines} subtotal={subtotal} shippingId={shippingId} />
       </div>
     </div>
   );
@@ -83,9 +108,15 @@ type RenderStepProps = Readonly<{
 }>;
 
 function renderStep(props: RenderStepProps): ReactElement {
-  if (props.step === "identity") return <IdentityStep buyer={props.buyer} setBuyer={props.setBuyer} onNext={() => props.setStep("delivery")} />;
-  if (props.step === "delivery") return <DeliveryStep address={props.address} setAddress={props.setAddress} shippingId={props.shippingId} setShippingId={props.setShippingId} onBack={() => props.setStep("identity")} onNext={() => props.setStep("payment")} />;
-  if (props.step === "payment") return <PaymentStep onBack={() => props.setStep("delivery")} onNext={() => props.setStep("review")} />;
+  if (props.step === "identity") {
+    return <IdentityStep buyer={props.buyer} setBuyer={props.setBuyer} onNext={() => props.setStep("delivery")} />;
+  }
+  if (props.step === "delivery") {
+    return <DeliveryStep address={props.address} setAddress={props.setAddress} shippingId={props.shippingId} setShippingId={props.setShippingId} onBack={() => props.setStep("identity")} onNext={() => props.setStep("payment")} />;
+  }
+  if (props.step === "payment") {
+    return <PaymentStep onBack={() => props.setStep("delivery")} onNext={() => props.setStep("review")} />;
+  }
   return <ReviewStep buyer={props.buyer} address={props.address} submitting={props.submitting} onBack={() => props.setStep("payment")} onEditIdentity={() => props.setStep("identity")} onEditDelivery={() => props.setStep("delivery")} onComplete={props.completeSimulation} />;
 }
 
@@ -98,7 +129,11 @@ function CheckoutProgress({ current }: Readonly<{ current: CheckoutStep }>): Rea
   const labels = ["Dados", "Entrega", "Pix", "Revisão"] as const;
   return (
     <ol className="checkoutProgress" aria-label="Progresso do checkout">
-      {labels.map((label, index) => <li className={index <= currentIndex ? "active" : ""} aria-current={index === currentIndex ? "step" : undefined} key={label}><span>{index + 1}</span><strong>{label}</strong></li>)}
+      {labels.map((label, index) => (
+        <li className={index <= currentIndex ? "active" : ""} aria-current={index === currentIndex ? "step" : undefined} key={label}>
+          <span>{index + 1}</span><strong>{label}</strong>
+        </li>
+      ))}
     </ol>
   );
 }
@@ -123,7 +158,10 @@ function IdentityStep({ buyer, setBuyer, onNext }: IdentityStepProps): ReactElem
         <InputField label="E-mail" type="email" value={buyer.email} onChange={(value) => setBuyer((current) => ({ ...current, email: value }))} autoComplete="email" />
         <InputField label="WhatsApp opcional" type="tel" inputMode="tel" required={false} value={buyer.phone} onChange={(value) => setBuyer((current) => ({ ...current, phone: value }))} autoComplete="tel" />
       </div>
-      <label className="checkoutConsent"><input type="checkbox" checked={buyer.consent} onChange={(event) => setBuyer((current) => ({ ...current, consent: event.target.checked }))} required /><span>Entendi que esta é uma simulação e que nenhum dado será enviado.</span></label>
+      <label className="checkoutConsent">
+        <input type="checkbox" checked={buyer.consent} onChange={(event) => setBuyer((current) => ({ ...current, consent: event.target.checked }))} required />
+        <span>Entendi que esta é uma simulação e que nenhum dado será enviado.</span>
+      </label>
       <StepActions nextLabel="Continuar para entrega" />
     </form>
   );
@@ -170,7 +208,13 @@ function DeliveryStep(props: DeliveryStepProps): ReactElement {
 function ShippingOptions(props: Readonly<{ selected: ShippingId; onSelect: (id: ShippingId) => void }>): ReactElement {
   return (
     <fieldset className="shippingOptions"><legend>Escolha um frete simulado</legend>
-      {shippingOptions.map((option) => <label className={props.selected === option.id ? "selected" : ""} key={option.id}><input type="radio" name="shipping" value={option.id} checked={props.selected === option.id} onChange={() => props.onSelect(option.id)} /><span><strong>{option.name}</strong><small>{option.estimate} · prazo simulado</small></span><b>{formatMoney(option.priceCents)}</b></label>)}
+      {shippingOptions.map((option) => (
+        <label className={props.selected === option.id ? "selected" : ""} key={option.id}>
+          <input type="radio" name="shipping" value={option.id} checked={props.selected === option.id} onChange={() => props.onSelect(option.id)} />
+          <span><strong>{option.name}</strong><small>{option.estimate} · prazo simulado</small></span>
+          <b>{formatMoney(option.priceCents)}</b>
+        </label>
+      ))}
     </fieldset>
   );
 }
@@ -204,8 +248,11 @@ function ReviewStep(props: ReviewStepProps): ReactElement {
       <ReviewCard title="Identificação" action={props.onEditIdentity}><strong>{props.buyer.name}</strong><span>{props.buyer.email}</span></ReviewCard>
       <ReviewCard title="Entrega" action={props.onEditDelivery}><strong>{props.address.street}, {props.address.number}</strong><span>{props.address.city} · {props.address.state}</span></ReviewCard>
       <ReviewCard title="Pagamento"><strong>Pix demonstrativo</strong><span>Sem QR Code ou cobrança</span></ReviewCard>
-      <label className="checkoutConsent"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /><span>Entendo que nenhum pedido, pagamento ou envio será criado.</span></label>
-      <StepActions back={props.onBack} nextLabel={props.submitting ? "Concluindo simulação…" : "Concluir simulação"} disabled={!consent || props.submitting} onNext={() => void props.onComplete()} />
+      <label className="checkoutConsent">
+        <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
+        <span>Entendo que nenhum pedido, pagamento ou envio será criado.</span>
+      </label>
+      <StepActions back={props.onBack} nextLabel={props.submitting ? "Concluindo simulação..." : "Concluir simulação"} disabled={!consent || props.submitting} onNext={() => void props.onComplete()} />
     </div>
   );
 }
@@ -249,20 +296,38 @@ type StepActionsProps = Readonly<{
 
 function StepActions({ back, nextLabel, onNext, disabled = false }: StepActionsProps): ReactElement {
   return (
-    <div className="checkoutActions">{back ? <button className="secondaryAction" type="button" onClick={back}><ArrowLeft size={18} />Voltar</button> : <span />}
+    <div className="checkoutActions">
+      {back ? <button className="secondaryAction" type="button" onClick={back}><ArrowLeft size={18} />Voltar</button> : <span />}
       <button className="primaryButton" type={onNext ? "button" : "submit"} onClick={onNext} disabled={disabled}>{nextLabel}<ArrowRight size={19} weight="bold" /></button>
     </div>
   );
 }
 
-function CheckoutSummary(props: Readonly<{ product: CatalogProduct; quantity: number; subtotal: number; shippingId: ShippingId }>): ReactElement {
-  const shipping = shippingById(props.shippingId);
-  const total = props.subtotal + shipping.priceCents;
+type CheckoutSummaryProps = Readonly<{
+  lines: readonly CheckoutLine[];
+  subtotal: number;
+  shippingId: ShippingId;
+}>;
+
+function CheckoutSummary({ lines, subtotal, shippingId }: CheckoutSummaryProps): ReactElement {
+  const shipping = shippingById(shippingId);
+  const total = subtotal + shipping.priceCents;
   return (
-    <aside className="commerceSummary checkoutSummary"><span className="eyebrow">Resumo demonstrativo</span><div><span>{props.quantity}× {props.product.name}</span><strong>{formatMoney(props.subtotal)}</strong></div><div><span>{shipping.name}</span><strong>{formatMoney(shipping.priceCents)}</strong></div><div className="summaryTotal"><span>Total simulado</span><strong>{formatMoney(total)}</strong></div><small>Valores ilustrativos. Nenhuma transação será iniciada.</small></aside>
+    <aside className="commerceSummary checkoutSummary">
+      <span className="eyebrow">Resumo demonstrativo</span>
+      {lines.map((line) => (
+        <div key={line.productId}>
+          <span>{line.quantity}× {line.product.name}</span>
+          <strong>{formatMoney(line.product.priceCents * line.quantity)}</strong>
+        </div>
+      ))}
+      <div><span>{shipping.name}</span><strong>{formatMoney(shipping.priceCents)}</strong></div>
+      <div className="summaryTotal"><span>Total simulado</span><strong>{formatMoney(total)}</strong></div>
+      <small>Valores ilustrativos. Nenhuma transação será iniciada.</small>
+    </aside>
   );
 }
 
 function EmptyCheckout(): ReactElement {
-  return <div className="commerceShell emptyCommerce"><span className="eyebrow">Checkout demonstrativo</span><h1>Seu carrinho está vazio.</h1><p>Adicione o chaveiro antes de iniciar o fluxo.</p><Link className="primaryButton" href="/loja/chaveiro-presente">Voltar ao produto <ArrowRight size={19} /></Link></div>;
+  return <div className="commerceShell emptyCommerce"><span className="eyebrow">Checkout demonstrativo</span><h1>Seu carrinho está vazio.</h1><p>Adicione um produto antes de iniciar o fluxo.</p><Link className="primaryButton" href="/loja">Voltar para a loja <ArrowRight size={19} /></Link></div>;
 }

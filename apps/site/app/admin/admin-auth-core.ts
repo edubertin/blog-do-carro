@@ -148,19 +148,21 @@ export function resolveAdminAccess(
 ): AdminAccess {
   if (isLoopbackHost(host)) return { kind: "allowed", identity: localPreviewIdentity() };
   const ownerIds = parseAllowlist(bootstrap.userIds, isOpaqueId);
-  const ownerEmails = bootstrap.emailBootstrapEnabled
-    ? parseAllowlist(
-        bootstrap.emailAllowlist,
-        (value) => EMAIL_PATTERN.test(value),
-        (value) => value.trim().toLowerCase(),
-      )
-    : [];
-  if (!ownerIds || !ownerEmails || ownerIds.length + ownerEmails.length === 0) return { kind: "misconfigured" };
+  if (ownerIds === null) return { kind: "misconfigured" };
+  const ownerEmails = parseAllowlist(
+    bootstrap.emailAllowlist,
+    (value) => EMAIL_PATTERN.test(value),
+    (value) => value.trim().toLowerCase(),
+  );
+  if (ownerEmails === null) return { kind: "misconfigured" };
+  const emailFallbackEnabled = bootstrap.emailBootstrapEnabled || ownerIds.length === 0;
+  const effectiveOwnerEmails = emailFallbackEnabled ? ownerEmails : [];
+  if (ownerIds.length + effectiveOwnerEmails.length === 0) return { kind: "misconfigured" };
   const actorId = headers.get(SITES_USER_ID_HEADER);
   if (actorId === null || actorId === "") return { kind: "anonymous" };
   if (!isOpaqueId(actorId)) return { kind: "denied" };
   const email = normalizedEmail(headers);
-  const authorized = ownerIds.includes(actorId) || (email !== null && ownerEmails.includes(email));
+  const authorized = ownerIds.includes(actorId) || (email !== null && effectiveOwnerEmails.includes(email));
   if (!authorized) return { kind: "denied" };
   return {
     kind: "allowed",

@@ -2,7 +2,6 @@ import { ArrowRight } from "@phosphor-icons/react/dist/ssr/ArrowRight";
 import { CaretDown } from "@phosphor-icons/react/dist/ssr/CaretDown";
 import { Clock } from "@phosphor-icons/react/dist/ssr/Clock";
 import { Fire } from "@phosphor-icons/react/dist/ssr/Fire";
-import { Storefront } from "@phosphor-icons/react/dist/ssr/Storefront";
 import { TrendUp } from "@phosphor-icons/react/dist/ssr/TrendUp";
 import Image from "next/image";
 import { SiteLink as Link } from "@/app/components/site-link";
@@ -10,6 +9,7 @@ import type { ReactElement } from "react";
 import type { CatalogProduct } from "@/db/contracts";
 import type { HomeProjection, PublicArticle, PublicCategoryGroup } from "@/domain/public-content";
 import { NewsletterForm } from "./lead-forms";
+import { HomeStoreCarousel } from "./commerce/home-store-carousel";
 import { Reveal } from "./motion";
 import { VideoCarousel } from "./video-carousel";
 
@@ -58,16 +58,6 @@ function CategoryIndex({ groups }: { groups: readonly PublicCategoryGroup[] }) {
   );
 }
 
-function ProductSpotlight({ product }: { product: CatalogProduct | null }) {
-  if (!product) return null;
-  return (
-    <Reveal className="contentSection productSpotlight" delay={0.12}>
-      <div className="productImage"><Image src={product.imageUrl} alt={product.imageAlt} fill sizes="(max-width: 760px) 46vw, 320px" /></div>
-      <div className="productCopy"><span className="storeBadge"><Storefront size={15} weight="fill" />Loja da comunidade</span><p className="productCollection">{product.collectionName}</p><h2>{product.name}</h2><p>Para quem nunca falta à chamada nos comentários.</p><Link href="/loja">Ver na loja <ArrowRight size={18} weight="bold" /></Link><Link className="productTextLink" href={`/loja/${product.slug}`}>Conhecer o produto</Link></div>
-    </Reveal>
-  );
-}
-
 function PopularArticles({ articles }: { articles: readonly PublicArticle[] }) {
   return (
     <Reveal className="contentSection popularSection" delay={0.14}>
@@ -87,9 +77,9 @@ function Newsletter() {
 
 type HomePageProps = Readonly<{
   projection: HomeProjection;
-  product: CatalogProduct | null;
+  products: readonly CatalogProduct[];
 }>;
 
-export function HomePage({ projection, product }: HomePageProps): ReactElement {
-  return <><UtilityStrip /><main><VideoCarousel videos={projection.featuredVideos} /><div className="homeGrid" id="ultimos"><LatestArticles articles={projection.latestArticles} /><CategoryIndex groups={projection.categoryGroups} /><ProductSpotlight product={product} /><PopularArticles articles={projection.popularArticles} /></div><Newsletter /></main></>;
+export function HomePage({ projection, products }: HomePageProps): ReactElement {
+  return <><UtilityStrip /><main><VideoCarousel videos={projection.featuredVideos} /><div className="homeGrid" id="ultimos"><LatestArticles articles={projection.latestArticles} /><CategoryIndex groups={projection.categoryGroups} /><Reveal className="contentSection homeStoreSection" delay={0.12}><HomeStoreCarousel products={products} /></Reveal><PopularArticles articles={projection.popularArticles} /></div><Newsletter /></main></>;
 }
