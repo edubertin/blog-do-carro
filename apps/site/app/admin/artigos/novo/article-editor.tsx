@@ -24,7 +24,8 @@ function isArticle(value: unknown): value is AdminArticleSummary {
   return typeof value.id === "string" && typeof value.revisionId === "string"
     && typeof value.slug === "string" && typeof value.title === "string"
     && typeof value.category === "string" && isArticleState(value.state)
-    && typeof value.version === "number" && typeof value.updatedAt === "number";
+    && typeof value.version === "number" && typeof value.updatedAt === "number"
+    && (value.videoAvailability === "pending" || value.videoAvailability === "ready");
 }
 
 function articleFromPayload(value: unknown): AdminArticleSummary | null {
@@ -146,17 +147,18 @@ function EditorialSection({ draft }: DraftSectionProps): ReactElement {
   );
 }
 
-type UploadedAsset = Readonly<{ id: string; url: string; altText: string }>;
+type UploadedAsset = Readonly<{ id: string; url: string; altText: string; width: number; height: number }>;
 
 async function uploadImage(file: File, altText: string): Promise<UploadedAsset> {
   const form = new FormData();
   form.set("file", file); form.set("altText", altText);
   const response = await fetch("/api/admin/media", { method: "POST", body: form, credentials: "same-origin" });
   const payload = await responsePayload(response);
-  if (!response.ok || !isRecord(payload) || !isRecord(payload.asset) || typeof payload.asset.id !== "string") {
+  if (!response.ok || !isRecord(payload) || !isRecord(payload.asset) || typeof payload.asset.id !== "string"
+    || typeof payload.asset.width !== "number" || typeof payload.asset.height !== "number") {
     throw new Error(apiError(payload, "Não foi possível enviar a imagem."));
   }
-  return { id: payload.asset.id, url: `/api/admin/media/${payload.asset.id}`, altText };
+  return { id: payload.asset.id, url: `/api/admin/media/${payload.asset.id}`, altText, width: payload.asset.width, height: payload.asset.height };
 }
 
 function moveBlock(blocks: readonly ArticleBlock[], index: number, offset: -1 | 1): readonly ArticleBlock[] {
@@ -184,14 +186,14 @@ function StructuredBodyEditor({ initialBody }: Readonly<{ initialBody: ArticleCo
     if (alt.length < 5) { setError("A descrição acessível precisa ter pelo menos 5 caracteres."); return; }
     try {
       setError(null); const asset = await uploadImage(file, alt);
-      const block: ArticleBlock = { id: crypto.randomUUID(), type: "image", assetId: asset.id, alt, alignment: "inline" };
+      const block: ArticleBlock = { id: crypto.randomUUID(), type: "image", assetId: asset.id, alt, alignment: "inline", width: asset.width, height: asset.height };
       setBlocks((current) => [...current.slice(0, index), block, ...current.slice(index)]);
     } catch (uploadError) { console.error("Falha no upload de imagem interna.", uploadError); setError(uploadError instanceof Error ? uploadError.message : "Falha no upload."); }
   }
   async function replaceImage(index: number, block: Extract<ArticleBlock, { type: "image" }>, file: File): Promise<void> {
     try {
       setError(null); const asset = await uploadImage(file, block.alt);
-      update(index, { ...block, assetId: asset.id });
+      update(index, { ...block, assetId: asset.id, width: asset.width, height: asset.height });
     } catch (uploadError) { console.error("Falha ao substituir imagem interna.", uploadError); setError(uploadError instanceof Error ? uploadError.message : "Falha no upload."); }
   }
   return <div className="adminField adminStructuredEditor"><span>Artigo completo</span><input type="hidden" name="bodyJson" value={JSON.stringify({ schemaVersion: 1, blocks })} />
@@ -343,7 +345,10 @@ export function ArticleEditor(): ReactElement {
       if (!result.response.ok) throw new Error(apiError(result.payload, "Não foi possível salvar o rascunho."));
       const saved = articleFromPayload(result.payload);
       if (!saved) throw new Error("O CMS retornou um rascunho inválido.");
-      setArticle(saved); setEditingSaved(false); setPhase("ready"); setFeedback({ kind: "success", message: "Rascunho salvo. Revise e envie para aprovação." });
+      const message = saved.videoAvailability === "pending"
+        ? "Vídeo adicionado como origem pendente. Os dados serão sincronizados quando ele estiver público."
+        : "Rascunho salvo. Revise e envie para aprovação.";
+      setArticle(saved); setEditingSaved(false); setPhase("ready"); setFeedback({ kind: "success", message });
     } catch (error) {
       console.error("Falha ao criar rascunho editorial.", error);
       setPhase("editing"); setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Não foi possível salvar o rascunho." });

@@ -10,7 +10,11 @@ export function ArticleBlocksRenderer({ body }: Readonly<{ body: PublicArticle["
     if (block.type === "heading") return block.level === 2 ? <h2 key={block.id}>{block.text}</h2> : <h3 key={block.id}>{block.text}</h3>;
     return (
       <figure className={`articleInlineImage articleInlineImage--${block.alignment}`} key={block.id}>
-        <Image src={`/media/${encodeURIComponent(block.assetId)}`} alt={block.alt} width={1200} height={800} loading="lazy" sizes="(max-width: 760px) 100vw, 760px" />
+        {block.width && block.height
+          ? <Image src={`/media/${encodeURIComponent(block.assetId)}`} alt={block.alt} width={block.width} height={block.height} loading="lazy" sizes="(max-width: 760px) 100vw, 760px" />
+          // Legacy structured records may predate intrinsic media dimensions; the browser must recover their natural ratio.
+          // eslint-disable-next-line @next/next/no-img-element
+          : <img src={`/media/${encodeURIComponent(block.assetId)}`} alt={block.alt} loading="lazy" decoding="async" />}
         {block.caption ? <figcaption>{block.caption}</figcaption> : null}
       </figure>
     );

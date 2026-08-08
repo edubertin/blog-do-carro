@@ -65,7 +65,7 @@ test("artigo percorre rascunho, revisão e publicação", async ({ page }) => {
   const requests: string[] = [];
   await page.route("**/api/admin/articles", async (route) => {
     requests.push(`draft:${route.request().method()}`);
-    const article = { id: "article-flow", revisionId: "revision-1", slug: "artigo-de-teste", title: "Título completo de teste", category: "Negociações", state: "draft", version: 1, updatedAt: Date.now() };
+    const article = { id: "article-flow", revisionId: "revision-1", slug: "artigo-de-teste", title: "Título completo de teste", category: "Negociações", state: "draft", version: 1, updatedAt: Date.now(), videoAvailability: "pending" };
     await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ article }) });
   });
   await page.route("**/api/admin/articles/article-flow/review", async (route) => {
@@ -91,6 +91,7 @@ test("artigo percorre rascunho, revisão e publicação", async ({ page }) => {
   await page.locator('[name="slug"]').fill("artigo-de-teste");
   await page.locator('[name="seoDescription"]').fill("Descrição completa para validar busca e compartilhamento do artigo de teste no portal automotivo.");
   await page.getByRole("button", { name: "Salvar rascunho" }).click();
+  await expect(page.getByText(/Vídeo adicionado como origem pendente/i)).toBeVisible();
   await expect(page.getByRole("button", { name: "Enviar para revisão" })).toBeVisible();
   await page.getByRole("button", { name: "Enviar para revisão" }).click();
   await page.getByRole("checkbox").check();
@@ -100,7 +101,7 @@ test("artigo percorre rascunho, revisão e publicação", async ({ page }) => {
 });
 
 test("editar artigo carrega a revisão pelo identificador", async ({ page }) => {
-  const article = { id: "article-test", revisionId: "revision-test", slug: "artigo-existente", title: "Artigo existente no CMS", category: "Negociações", state: "draft", version: 2, updatedAt: Date.now() };
+  const article = { id: "article-test", revisionId: "revision-test", slug: "artigo-existente", title: "Artigo existente no CMS", category: "Negociações", state: "draft", version: 2, updatedAt: Date.now(), videoAvailability: "ready" };
   const draft = { articleId: "article-test", title: article.title, subtitle: "Subtítulo existente suficientemente completo.", slug: article.slug, seoDescription: "Descrição existente suficientemente completa para os resultados de busca do portal.", categorySlug: "negociacoes", body: ["Conteúdo existente do artigo com tamanho suficiente para continuar a edição no painel administrativo sem perder dados."], opinion: "Opinião existente suficientemente completa.", imageUrl: "/images/articles/hero-negociacoes.png", imageAlt: "Imagem existente do artigo", youtubeVideoId: "jT0j_rCgbbc", readTimeMinutes: 5, faq: [{ question: "Pergunta existente no artigo?", answer: "Resposta existente no artigo." }] };
   await page.route("**/api/admin/articles/article-test", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ article, draft }) }));
   await page.goto("/admin/artigos/novo?article=article-test", { waitUntil: "networkidle" });

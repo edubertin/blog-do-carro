@@ -17,6 +17,7 @@ export type PublicArticle = Readonly<{
   image: string;
   imageAlt: string;
   videoId?: string;
+  videoAvailability?: "pending" | "ready";
   body: ArticleContentDocument | readonly string[];
   opinion: string;
   faq: readonly PublicFaq[];

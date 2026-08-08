@@ -37,11 +37,19 @@ function Opinion({ text }: { text: string }) {
 }
 
 function VideoFacade({ article }: { article: PublicArticle }) {
-  if (article.videoId) {
+  if (article.videoId && article.videoAvailability !== "pending") {
     return (
       <section className="videoSection">
         <div className="articleSectionTitle"><span className="eyebrow">Assista também</span><h2>O vídeo que abriu a conversa</h2></div>
         <YouTubeConsentEmbed videoId={article.videoId} title={article.title} posterSrc={article.image} />
+      </section>
+    );
+  }
+  if (article.videoAvailability === "pending") {
+    return (
+      <section className="videoSection">
+        <div className="articleSectionTitle"><span className="eyebrow">Assista também</span><h2>Vídeo em preparação</h2></div>
+        <div className="videoPending" role="status"><strong>Vídeo relacionado em preparação.</strong><p>Ele aparecerá aqui quando for publicado no canal.</p></div>
       </section>
     );
   }

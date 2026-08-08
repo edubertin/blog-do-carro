@@ -2,7 +2,7 @@ import { getRuntimeDatabase, getRuntimeMediaBucket, isPublicD1ReadEnabled } from
 
 type RouteContext = Readonly<{ params: Promise<Readonly<{ id: string }>> }>;
 
-export async function GET(_request: Request, routeContext: RouteContext): Promise<Response> {
+export async function GET(request: Request, routeContext: RouteContext): Promise<Response> {
   if (!isPublicD1ReadEnabled()) return new Response(null, { status: 404 });
   const database = getRuntimeDatabase();
   const bucket = getRuntimeMediaBucket();
@@ -13,5 +13,7 @@ export async function GET(_request: Request, routeContext: RouteContext): Promis
   const object = await bucket.get(row.object_key);
   if (!object) return new Response(null, { status: 404 });
   const etag = typeof row.sha256 === "string" && row.sha256 ? `"${row.sha256}"` : `"media-${id}"`;
-  return new Response(object.body, { headers: { "Cache-Control": "public, max-age=31536000, immutable", "Content-Type": row.content_type, "ETag": etag, "X-Content-Type-Options": "nosniff" } });
+  const headers = { "Cache-Control": "public, max-age=31536000, immutable", "Content-Type": row.content_type, "ETag": etag, "X-Content-Type-Options": "nosniff" };
+  if (request.headers.get("If-None-Match") === etag) return new Response(null, { status: 304, headers });
+  return new Response(object.body, { headers });
 }

@@ -63,6 +63,130 @@ async function loadAdminAuthCore() {
   return loadTypescriptModule("../app/admin/admin-auth-core.ts");
 }
 
+async function loadImageUpload() {
+  return loadTypescriptModule("../domain/image-upload.ts");
+}
+
+test("validates real image structure and preserves intrinsic dimensions", async () => {
+  const { sanitizeImageUpload } = await loadImageUpload();
+  const source = readFileSync(new URL("../public/images/articles/hero-negociacoes.png", import.meta.url));
+  const image = sanitizeImageUpload(new Uint8Array(source));
+  assert.equal(image.contentType, "image/png");
+  assert.ok(image.width > 0);
+  assert.ok(image.height > 0);
+  assert.deepEqual([...image.bytes.slice(0, 8)], [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  assert.throws(() => sanitizeImageUpload(new Uint8Array(source.slice(0, 24))), /truncada|corrompida/i);
+  assert.throws(() => sanitizeImageUpload(new TextEncoder().encode("not-an-image")), /Formato real/i);
+});
+
+test("renders uploaded article images with their stored aspect ratio", () => {
+  const renderer = readFileSync(new URL("../app/components/article-blocks-renderer.tsx", import.meta.url), "utf8");
+  assert.match(renderer, /width=\{block\.width\}/);
+  assert.match(renderer, /height=\{block\.height\}/);
+  assert.doesNotMatch(renderer, /width=\{1200\}\s+height=\{800\}/);
+});
+
+test("keeps staged R2 objects private and serves only their published D1 projection", async () => {
+  const worker = await loadWorker();
+  const runtime = await import("./cloudflare-workers-stub.mjs");
+  let lifecycleState = "staged";
+  const bytes = new TextEncoder().encode("published-image");
+  const mediaEnvironment = {
+    ...environment,
+    CMS_PUBLIC_READ_ENABLED: "1",
+    DB: {
+      prepare: () => ({
+        bind: () => ({
+          first: async () => lifecycleState === "published"
+            ? { object_key: "media/asset/original.webp", content_type: "image/webp", sha256: "asset-hash" }
+            : null,
+        }),
+      }),
+    },
+    MEDIA: { get: async () => ({ body: bytes }) },
+  };
+  Object.assign(runtime.env, mediaEnvironment);
+  const staged = await fetchRoute(worker, "/media/asset", mediaEnvironment);
+  assert.equal(staged.status, 404);
+  lifecycleState = "published";
+  const published = await fetchRoute(worker, "/media/asset", mediaEnvironment);
+  assert.equal(published.status, 200);
+  assert.equal(published.headers.get("etag"), '"asset-hash"');
+  assert.equal(published.headers.get("x-content-type-options"), "nosniff");
+  assert.deepEqual(new Uint8Array(await published.arrayBuffer()), bytes);
+  for (const key of ["CMS_PUBLIC_READ_ENABLED", "DB", "MEDIA"]) delete runtime.env[key];
+});
+
+function publicationDatabase(mediaKeys) {
+  const state = { published: false, projection: "previous-revision" };
+  const source = {
+    id: "article-media", slug: "article-media", revision_id: "revision-new", workflow_state: "review",
+    title: "Artigo com mídia", subtitle: "Subtítulo editorial completo", seo_description: "Descrição SEO completa",
+    body_json: JSON.stringify({ schemaVersion: 1, blocks: [{ id: "p1", type: "paragraph", text: "Conteúdo." }] }),
+    opinion: "Opinião.", image_url: "/media/asset", image_alt: "Imagem editorial", read_time_minutes: 2,
+    category_id: "category", category_name: "Categoria", category_slug: "categoria",
+    youtube_video_external_id: "youtube-id", video_availability: "pending",
+  };
+  const database = {
+    prepare(sql) {
+      return {
+        bind() {
+          return {
+            first: async () => sql.includes("admin_principals") ? { id: "admin-local" } : source,
+            all: async () => {
+              if (sql.includes("m.object_key")) return { results: mediaKeys.map((object_key) => ({ object_key })) };
+              if (sql.includes("m.lifecycle_state")) return { results: [{ id: "asset", lifecycle_state: "staged" }] };
+              if (sql.includes("article_revision_faqs")) return { results: [{ question: "Pergunta?", answer: "Resposta." }] };
+              return { results: [] };
+            },
+          };
+        },
+      };
+    },
+    async batch() { state.published = true; state.projection = "revision-new"; return []; },
+  };
+  return { database, state };
+}
+
+async function publishWithMediaRuntime(database, media) {
+  const runtime = await import("./cloudflare-workers-stub.mjs");
+  runtime.env.DB = database;
+  if (media) runtime.env.MEDIA = media; else delete runtime.env.MEDIA;
+  const worker = await loadWorker();
+  const response = await worker.fetch(new Request("http://localhost/api/admin/articles/article-media/publish", {
+    method: "POST",
+    headers: { Origin: "http://localhost" },
+  }), environment, context);
+  delete runtime.env.DB;
+  delete runtime.env.MEDIA;
+  return response;
+}
+
+test("publish preflight preserves the previous projection when the R2 binding is absent", async () => {
+  const { database, state } = publicationDatabase(["media/asset/original.webp"]);
+  const response = await publishWithMediaRuntime(database, null);
+  assert.equal(response.status, 500);
+  assert.equal(state.published, false);
+  assert.equal(state.projection, "previous-revision");
+});
+
+test("publish preflight preserves the previous projection when an R2 object is absent", async () => {
+  const { database, state } = publicationDatabase(["media/asset/original.webp"]);
+  const response = await publishWithMediaRuntime(database, { get: async () => null });
+  assert.equal(response.status, 500);
+  assert.equal(state.published, false);
+  assert.equal(state.projection, "previous-revision");
+});
+
+test("publish preflight permits the atomic D1 publication when every R2 object exists", async () => {
+  const { database, state } = publicationDatabase(["media/asset/original.webp"]);
+  const response = await publishWithMediaRuntime(database, { get: async () => ({ body: new Uint8Array([1]) }) });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { ok: true });
+  assert.equal(state.published, true);
+  assert.equal(state.projection, "revision-new");
+});
+
 const htmlRoutes = [
   ["/", /Loja da comunidade/i],
   ["/artigos/moto-por-spin-financiada-bom-negocio", /Minha opinião/i],

@@ -19,7 +19,7 @@ import { parseArticleContent } from "../../domain/article-content";
 const articleColumns = `
   article_id, revision_id, slug, category_name, category_slug, title, subtitle,
   seo_description, image_url, image_alt, youtube_video_external_id, date_label,
-  body_json, opinion, faq_json, read_time_minutes, published_at, updated_at
+  video_availability, body_json, opinion, faq_json, read_time_minutes, published_at, updated_at
 `;
 
 const productColumns = `
@@ -91,6 +91,11 @@ function optionalIsoTimestamp(value: number | undefined): string | undefined {
   return value === undefined ? undefined : isoTimestamp(value);
 }
 
+function videoAvailability(value: string): "pending" | "ready" {
+  if (value === "pending" || value === "ready") return value;
+  throw new Error("Disponibilidade de vídeo inválida na projeção D1.");
+}
+
 function publishedArticle(row: D1Row): PublicArticle {
   return {
     slug: stringValue(row, "slug"),
@@ -106,6 +111,7 @@ function publishedArticle(row: D1Row): PublicArticle {
     image: stringValue(row, "image_url"),
     imageAlt: stringValue(row, "image_alt"),
     videoId: nullableStringValue(row, "youtube_video_external_id"),
+    videoAvailability: videoAvailability(stringValue(row, "video_availability")),
     body: articleBody(stringValue(row, "body_json")),
     opinion: stringValue(row, "opinion"),
     faq: faqArray(stringValue(row, "faq_json")),
@@ -254,7 +260,7 @@ async function activeCategoryGroups(database: D1Database): Promise<readonly Publ
 }
 
 async function curatedVideos(database: D1Database): Promise<readonly PublicFeaturedVideo[]> {
-  const query = "SELECT y.external_id AS video_id, y.source_title, hi.kicker AS editorial_title, hi.question, hi.meta_label, y.poster_url, p.slug AS article_slug FROM home_items hi JOIN home_sections hs ON hs.id = hi.section_id JOIN youtube_videos y ON y.id = hi.video_id JOIN published_article_projections p ON p.article_id = hi.article_id WHERE hs.section_type = 'hero' AND hs.status = 'published' AND hi.item_type = 'video' ORDER BY hi.position";
+  const query = "SELECT y.external_id AS video_id, y.source_title, hi.kicker AS editorial_title, hi.question, hi.meta_label, y.poster_url, p.slug AS article_slug FROM home_items hi JOIN home_sections hs ON hs.id = hi.section_id JOIN youtube_videos y ON y.id = hi.video_id JOIN published_article_projections p ON p.article_id = hi.article_id WHERE hs.section_type = 'hero' AND hs.status = 'published' AND hi.item_type = 'video' AND y.import_state = 'imported' ORDER BY hi.position";
   const result = await database.prepare(query).all();
   return result.results.map(featuredVideo);
 }
