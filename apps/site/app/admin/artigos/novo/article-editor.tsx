@@ -176,20 +176,41 @@ function textBlock(block: ArticleBlock, onChange: (block: ArticleBlock) => void)
   return <input aria-label={`Subtítulo H${block.level}`} value={block.text} onChange={(event) => onChange({ ...block, text: event.currentTarget.value })} />;
 }
 
+type InlineImageDraftProps = Readonly<{
+  alt: string;
+  uploading: boolean;
+  onAltChange: (value: string) => void;
+  onFile: (file: File) => void;
+  onCancel: () => void;
+}>;
+
+function InlineImageDraft({ alt, uploading, onAltChange, onFile, onCancel }: InlineImageDraftProps): ReactElement {
+  const ready = alt.trim().length >= 5;
+  return <div className="adminInlineImageDraft" role="group" aria-label="Adicionar imagem interna">
+    <label className="adminField"><span>Descrição acessível</span><input value={alt} minLength={5} maxLength={240} disabled={uploading} onChange={(event) => onAltChange(event.currentTarget.value)} placeholder="Descreva o que aparece na imagem" /></label>
+    <small>{ready ? "Agora escolha um arquivo JPEG, PNG ou WebP." : "Escreva pelo menos 5 caracteres antes de escolher o arquivo."}</small>
+    <div className="adminMediaActions"><label className="adminFileControl"><input className="adminVisuallyHiddenFile" type="file" accept="image/jpeg,image/png,image/webp" disabled={!ready || uploading} aria-label="Escolher imagem interna" onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; if (file) onFile(file); }} /><span className={`adminButton adminButton--primary${ready && !uploading ? "" : " is-disabled"}`} aria-hidden="true">{uploading ? "Enviando imagem…" : "Escolher imagem"}</span></label><button type="button" className="adminButton adminButton--secondary" disabled={uploading} onClick={onCancel}>Cancelar</button></div>
+  </div>;
+}
+
 function StructuredBodyEditor({ initialBody }: Readonly<{ initialBody: ArticleContentDocument }>): ReactElement {
   const [blocks, setBlocks] = useState<readonly ArticleBlock[]>(initialBody.blocks);
   const [error, setError] = useState<string | null>(null);
+  const [imageDraft, setImageDraft] = useState<Readonly<{ index: number; alt: string }> | null>(null);
+  const [uploadingInline, setUploadingInline] = useState(false);
   function update(index: number, block: ArticleBlock): void { setBlocks((current) => current.map((item, position) => position === index ? block : item)); }
   function insertText(index: number): void { setBlocks((current) => [...current.slice(0, index), { id: crypto.randomUUID(), type: "paragraph", text: "" }, ...current.slice(index)]); }
   function insertHeading(index: number): void { setBlocks((current) => [...current.slice(0, index), { id: crypto.randomUUID(), type: "heading", level: 2, text: "" }, ...current.slice(index)]); }
   async function insertImage(index: number, file: File): Promise<void> {
-    const alt = window.prompt("Descreva a imagem para leitores que não conseguem vê-la:")?.trim() ?? "";
+    const alt = imageDraft?.index === index ? imageDraft.alt.trim() : "";
     if (alt.length < 5) { setError("A descrição acessível precisa ter pelo menos 5 caracteres."); return; }
     try {
-      setError(null); const asset = await uploadImage(file, alt);
+      setUploadingInline(true); setError(null); const asset = await uploadImage(file, alt);
       const block: ArticleBlock = { id: crypto.randomUUID(), type: "image", assetId: asset.id, alt, alignment: "inline", width: asset.width, height: asset.height };
       setBlocks((current) => [...current.slice(0, index), block, ...current.slice(index)]);
+      setImageDraft(null);
     } catch (uploadError) { console.error("Falha no upload de imagem interna.", uploadError); setError(uploadError instanceof Error ? uploadError.message : "Falha no upload."); }
+    finally { setUploadingInline(false); }
   }
   async function replaceImage(index: number, block: Extract<ArticleBlock, { type: "image" }>, file: File): Promise<void> {
     try {
@@ -201,7 +222,8 @@ function StructuredBodyEditor({ initialBody }: Readonly<{ initialBody: ArticleCo
     {blocks.map((block, index) => <div className="adminStructuredBlock" key={block.id}>{textBlock(block, (next) => update(index, next))}
       {block.type === "image" ? <><Image src={`/api/admin/media/${block.assetId}`} alt={block.alt} width={800} height={500} unoptimized /><input aria-label="Descrição acessível" value={block.alt} onChange={(event) => update(index, { ...block, alt: event.currentTarget.value })} /><input aria-label="Legenda opcional" placeholder="Legenda opcional" value={block.caption ?? ""} onChange={(event) => update(index, { ...block, caption: event.currentTarget.value })} /><select aria-label="Largura da imagem" value={block.alignment} onChange={(event) => update(index, { ...block, alignment: event.currentTarget.value === "wide" ? "wide" : "inline" })}><option value="inline">No texto</option><option value="wide">Destaque</option></select><label className="adminButton adminButton--secondary">Substituir imagem<input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(event) => { const file = event.currentTarget.files?.[0]; if (file) void replaceImage(index, block, file); }} /></label></> : null}
       <div className="adminMediaActions"><button type="button" onClick={() => setBlocks((current) => moveBlock(current, index, -1))} aria-label="Mover bloco para cima">↑</button><button type="button" onClick={() => setBlocks((current) => moveBlock(current, index, 1))} aria-label="Mover bloco para baixo">↓</button><button type="button" onClick={() => setBlocks((current) => current.filter((item) => item.id !== block.id))}>Remover</button></div>
-      <div className="adminInsertBlock"><button type="button" onClick={() => insertText(index + 1)}>+ Texto</button><button type="button" onClick={() => insertHeading(index + 1)}>+ Subtítulo</button><label className="adminButton adminButton--secondary">+ Imagem<input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(event) => { const file = event.currentTarget.files?.[0]; if (file) void insertImage(index + 1, file); }} /></label></div>
+      <div className="adminInsertBlock"><button type="button" onClick={() => insertText(index + 1)}>+ Texto</button><button type="button" onClick={() => insertHeading(index + 1)}>+ Subtítulo</button><button type="button" className="adminButton adminButton--secondary" onClick={() => { setError(null); setImageDraft({ index: index + 1, alt: "" }); }}>+ Imagem</button></div>
+      {imageDraft?.index === index + 1 ? <InlineImageDraft alt={imageDraft.alt} uploading={uploadingInline} onAltChange={(alt) => setImageDraft({ index: index + 1, alt })} onFile={(file) => { void insertImage(index + 1, file); }} onCancel={() => setImageDraft(null)} /> : null}
     </div>)}{error ? <small role="alert">{error}</small> : null}</div>;
 }
 
