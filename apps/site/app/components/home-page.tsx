@@ -3,6 +3,7 @@ import { Clock } from "@phosphor-icons/react/dist/ssr/Clock";
 import { Fire } from "@phosphor-icons/react/dist/ssr/Fire";
 import { TrendUp } from "@phosphor-icons/react/dist/ssr/TrendUp";
 import Image from "next/image";
+import { isManagedMediaPath } from "@/domain/media-path";
 import { SiteLink as Link } from "@/app/components/site-link";
 import type { ReactElement } from "react";
 import type { CatalogProduct } from "@/db/contracts";
@@ -23,7 +24,7 @@ function SectionHeading({ title, icon = false }: { title: string; icon?: boolean
 function ArticleRow({ article }: { article: PublicArticle }) {
   return (
     <Link className="articleRow" href={`/artigos/${article.slug}`}>
-      <div className="articleThumb"><Image src={article.image} alt="" fill sizes="112px" /></div>
+      <div className="articleThumb"><Image src={article.image} alt="" fill sizes="112px" unoptimized={isManagedMediaPath(article.image)} /></div>
       <div className="articleRowCopy"><span className="articleCategory">{article.category}</span><h3>{article.title}</h3><span className="readTime"><Clock size={13} />{article.readTime}</span></div>
       <span className="rowArrow" aria-hidden="true"><ArrowRight size={18} /></span>
     </Link>

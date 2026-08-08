@@ -15,6 +15,7 @@ import { conflictingResource, invalidInput, missingResource } from "../../server
 import type { D1Database, D1PreparedStatement, D1Row } from "../d1";
 import type { AdminIdentity, AdminPermission } from "../../app/admin/admin-auth-core";
 import { articleText, parseArticleContent, referencedAssetIds } from "../../domain/article-content";
+import { managedMediaAssetId } from "../../domain/media-path";
 
 export type AdminWriteContext = Readonly<{
   database: D1Database;
@@ -156,16 +157,12 @@ async function assertVideoAvailable(database: D1Database, sourceVideoId: string,
 }
 
 async function assertMediaAvailable(database: D1Database, input: ArticleDraftInput): Promise<void> {
-  const coverAssetId = coverMediaAssetId(input.imageUrl);
+  const coverAssetId = managedMediaAssetId(input.imageUrl);
   const assetIds = [...referencedAssetIds(input.body), ...(coverAssetId ? [coverAssetId] : [])];
   for (const assetId of assetIds) {
     const row = await database.prepare("SELECT id FROM media_assets WHERE id = ? AND lifecycle_state IN ('staged', 'published') LIMIT 1").bind(assetId).first();
     if (!row) throw invalidInput("Uma imagem interna não está disponível na biblioteca.");
   }
-}
-
-function coverMediaAssetId(imageUrl: string): string | null {
-  return imageUrl.match(/^\/media\/([0-9a-f-]{36})$/u)?.[1] ?? null;
 }
 
 function mediaStatements(database: D1Database, revisionId: string, input: ArticleDraftInput): readonly D1PreparedStatement[] {
@@ -174,7 +171,7 @@ function mediaStatements(database: D1Database, revisionId: string, input: Articl
     return [database.prepare("INSERT INTO article_revision_media (revision_id, media_asset_id, usage, block_id, position, alt_text, caption) VALUES (?, ?, 'inline', ?, ?, ?, ?)")
       .bind(revisionId, block.assetId, block.id, position, block.alt.trim(), block.caption?.trim() || null)];
   });
-  const coverAssetId = coverMediaAssetId(input.imageUrl);
+  const coverAssetId = managedMediaAssetId(input.imageUrl);
   if (!coverAssetId) return inlineStatements;
   return [database.prepare("INSERT INTO article_revision_media (revision_id, media_asset_id, usage, block_id, position, alt_text, caption) VALUES (?, ?, 'cover', 'cover', 0, ?, NULL)")
     .bind(revisionId, coverAssetId, input.imageAlt.trim()), ...inlineStatements];

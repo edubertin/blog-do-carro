@@ -8,6 +8,7 @@ import type { ArticleBlock, ArticleContentDocument } from "@/domain/article-cont
 import { AdminCard } from "../../admin-ui";
 import Image from "next/image";
 import { RevisionHistory } from "./revision-history";
+import { managedMediaAssetId } from "@/domain/media-path";
 
 type Feedback = Readonly<{ kind: "success" | "error"; message: string }>;
 type EditorPhase = "editing" | "saving" | "ready" | "reviewing" | "review" | "publishing" | "published";
@@ -94,17 +95,6 @@ function youtubeVideoId(value: string): string {
   throw new Error("Informe uma URL ou ID válido do YouTube.");
 }
 
-function imageSource(value: string): string {
-  if (value.startsWith("/") && !value.startsWith("//") && !value.includes("..") && !value.includes("?") && !value.includes("#")) return value;
-  try {
-    const url = new URL(value);
-    if (url.protocol === "https:" && !url.username && !url.password) return url.toString();
-  } catch (error) {
-    console.info("Endereço de imagem inválido informado no editor.", error);
-  }
-  throw new Error("Informe um caminho interno ou uma URL HTTPS para a imagem.");
-}
-
 function articleDraft(form: HTMLFormElement, articleId?: string): ArticleDraftInput {
   const data = new FormData(form);
   const input: ArticleDraftInput = {
@@ -112,7 +102,7 @@ function articleDraft(form: HTMLFormElement, articleId?: string): ArticleDraftIn
     title: formText(data, "title"), subtitle: formText(data, "subtitle"), slug: formText(data, "slug"),
     seoDescription: formText(data, "seoDescription"), categorySlug: formText(data, "categorySlug"),
     body: parseArticleContent(JSON.parse(formText(data, "bodyJson"))),
-    opinion: formText(data, "opinion"), imageUrl: imageSource(formText(data, "imageUrl")), imageAlt: formText(data, "imageAlt"),
+    opinion: formText(data, "opinion"), imageUrl: formText(data, "imageUrl"), imageAlt: formText(data, "imageAlt"),
     youtubeVideoId: youtubeVideoId(formText(data, "youtubeUrl")),
     readTimeMinutes: Number(formText(data, "readTimeMinutes")),
     faq: [{ question: formText(data, "faqQuestion"), answer: formText(data, "faqAnswer") }],
@@ -228,11 +218,13 @@ function StructuredBodyEditor({ initialBody }: Readonly<{ initialBody: ArticleCo
 }
 
 function ImageSection({ draft }: DraftSectionProps): ReactElement {
-  const [imageUrl, setImageUrl] = useState(draft?.imageUrl ?? "");
+  const legacyCover = draft?.imageUrl && !managedMediaAssetId(draft.imageUrl) ? draft.imageUrl : null;
+  const [imageUrl, setImageUrl] = useState(legacyCover ? "" : draft?.imageUrl ?? "");
   const [imageAlt, setImageAlt] = useState(draft?.imageAlt ?? "");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasImage = imageUrl.trim().length > 0;
+  const assetId = managedMediaAssetId(imageUrl);
 
   async function uploadCover(file: File): Promise<void> {
     if (imageAlt.trim().length < 5) { setError("Descreva a imagem antes de enviar a capa."); return; }
@@ -250,10 +242,12 @@ function ImageSection({ draft }: DraftSectionProps): ReactElement {
     <section className="adminFormSection">
       <h2>3. Imagem principal</h2>
       <div className="adminFieldGrid">
-        <label className="adminField"><span>Caminho ou URL HTTPS</span><input name="imageUrl" required maxLength={500} autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="/images/artigos/capa.webp" value={imageUrl} onChange={(event) => setImageUrl(event.currentTarget.value)} aria-describedby="image-help" /><small id="image-help">A imagem precisa estar pública para o artigo poder ser publicado.</small></label>
+        <input name="imageUrl" type="hidden" value={imageUrl} />
         <label className="adminField"><span>Descrição acessível da imagem</span><input name="imageAlt" required minLength={5} maxLength={240} placeholder="Descreva o que aparece na imagem" value={imageAlt} onChange={(event) => setImageAlt(event.currentTarget.value)} /></label>
       </div>
-      <div className="adminMediaActions"><label className="adminButton adminButton--primary">{uploading ? "Enviando capa…" : "Enviar imagem da capa"}<input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={uploading} onChange={(event) => { const file = event.currentTarget.files?.[0]; if (file) void uploadCover(file); }} /></label><button className="adminButton adminButton--secondary" type="button" disabled={!hasImage || uploading} onClick={() => setImageUrl("")}>Remover arquivo</button></div>
+      {legacyCover ? <p className="adminMediaWarning" role="status">A capa antiga usa um endereço externo. Envie o arquivo novamente para salvar uma nova revisão.</p> : null}
+      {assetId ? <Image className="adminCoverPreview" src={`/api/admin/media/${assetId}`} alt={imageAlt} width={960} height={540} unoptimized /> : <p className="adminMediaPlaceholder">Nenhuma capa enviada. Descreva a imagem e escolha um arquivo JPEG, PNG ou WebP.</p>}
+      <div className="adminMediaActions"><label className="adminFileControl"><input className="adminVisuallyHiddenFile" type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading} aria-label={hasImage ? "Substituir imagem da capa" : "Escolher imagem da capa"} onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; if (file) void uploadCover(file); }} /><span className={`adminButton adminButton--primary${uploading ? " is-disabled" : ""}`} aria-hidden="true">{uploading ? "Enviando capa…" : hasImage ? "Substituir imagem da capa" : "Escolher imagem da capa"}</span></label><button className="adminButton adminButton--secondary" type="button" disabled={!hasImage || uploading} onClick={() => setImageUrl("")}>Remover arquivo</button></div>
       {error ? <small role="alert">{error}</small> : null}
     </section>
   );

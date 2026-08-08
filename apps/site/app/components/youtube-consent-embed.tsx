@@ -2,6 +2,7 @@
 
 import { Play } from "@phosphor-icons/react/Play";
 import Image from "next/image";
+import { isManagedMediaPath } from "@/domain/media-path";
 import { useEffect, useId, useRef, useState } from "react";
 import type { ReactElement } from "react";
 
@@ -37,7 +38,7 @@ export function YouTubeConsentEmbed({ videoId, title, posterSrc }: YouTubeConsen
 
   return (
     <div className="youtubeEmbed youtubeConsentEmbed">
-      <Image src={posterSrc} alt="" fill sizes="(max-width: 760px) 100vw, 410px" />
+      <Image src={posterSrc} alt="" fill sizes="(max-width: 760px) 100vw, 410px" unoptimized={isManagedMediaPath(posterSrc)} />
       <div className="youtubeConsentCopy">
         <span>Privacidade primeiro</span>
         <h3>Você decide quando conectar ao YouTube</h3>
