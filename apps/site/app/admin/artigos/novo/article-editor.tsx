@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { FormEvent, ReactElement } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { FormEvent, ReactElement, RefObject } from "react";
 import type { AdminArticleEditorRecord, AdminArticleSummary, ArticleDraftInput } from "@/db/admin-contracts";
 import { legacyBodyToDocument, parseArticleContent } from "@/domain/article-content";
 import type { ArticleBlock, ArticleContentDocument } from "@/domain/article-content";
@@ -110,7 +110,10 @@ function articleDraft(form: HTMLFormElement, articleId?: string): ArticleDraftIn
   return input;
 }
 
-type DraftSectionProps = Readonly<{ draft: ArticleDraftInput | null }>;
+type DraftSectionProps = Readonly<{
+  draft: ArticleDraftInput | null;
+  onUploadingChange?: (uploading: boolean) => void;
+}>;
 
 function VideoSourceSection({ draft }: DraftSectionProps): ReactElement {
   return (
@@ -121,7 +124,7 @@ function VideoSourceSection({ draft }: DraftSectionProps): ReactElement {
   );
 }
 
-function EditorialSection({ draft }: DraftSectionProps): ReactElement {
+function EditorialSection({ draft, onUploadingChange }: DraftSectionProps): ReactElement {
   return (
     <section className="adminFormSection">
       <h2>2. História editorial</h2>
@@ -132,7 +135,7 @@ function EditorialSection({ draft }: DraftSectionProps): ReactElement {
           <label className="adminField"><span>Categoria</span><select name="categorySlug" required defaultValue={draft?.categorySlug ?? ""}><option value="" disabled>Selecione uma categoria</option><option value="compra-e-venda">Compra e Venda</option><option value="negociacoes">Negociações</option><option value="mercado-automotivo">Mercado Automotivo</option><option value="suv">SUV</option><option value="sedan">Sedan</option><option value="hatch">Hatch</option><option value="picapes">Picapes</option><option value="comparativos">Comparativos</option><option value="problemas-cronicos">Problemas Crônicos</option><option value="dicas">Dicas</option></select></label>
           <label className="adminField"><span>Tempo de leitura em minutos</span><input name="readTimeMinutes" required type="number" min="1" max="120" step="1" inputMode="numeric" placeholder="6" defaultValue={draft?.readTimeMinutes ?? ""} /></label>
         </div>
-        <StructuredBodyEditor initialBody={draft?.body ?? legacyBodyToDocument([""])} />
+        <StructuredBodyEditor initialBody={draft?.body ?? legacyBodyToDocument([""])} onUploadingChange={onUploadingChange} />
       </div>
     </section>
   );
@@ -183,41 +186,108 @@ function InlineImageDraft({ alt, uploading, onAltChange, onFile, onCancel }: Inl
   </div>;
 }
 
-function StructuredBodyEditor({ initialBody }: Readonly<{ initialBody: ArticleContentDocument }>): ReactElement {
+type ImageBlock = Extract<ArticleBlock, { type: "image" }>;
+type ImageDraft = Readonly<{ beforeId: string | null; alt: string }>;
+type StructuredBodyEditorProps = Readonly<{
+  initialBody: ArticleContentDocument;
+  onUploadingChange?: (uploading: boolean) => void;
+}>;
+
+function insertionIndex(blocks: readonly ArticleBlock[], beforeId: string | null): number {
+  if (beforeId === null) return blocks.length;
+  const index = blocks.findIndex((block) => block.id === beforeId);
+  return index < 0 ? blocks.length : index;
+}
+
+function insertAtGap(blocks: readonly ArticleBlock[], beforeId: string | null, block: ArticleBlock): readonly ArticleBlock[] {
+  const index = insertionIndex(blocks, beforeId);
+  return [...blocks.slice(0, index), block, ...blocks.slice(index)];
+}
+
+type InsertGapProps = Readonly<{
+  beforeId: string | null;
+  positionLabel: string;
+  busy: boolean;
+  imageDraft: ImageDraft | null;
+  onInsert: (type: "paragraph" | "heading", beforeId: string | null) => void;
+  onImageDraft: (draft: ImageDraft | null) => void;
+  onImageFile: (file: File) => void;
+}>;
+
+function InsertGap(props: InsertGapProps): ReactElement {
+  const active = props.imageDraft?.beforeId === props.beforeId;
+  return <div className="adminInsertGap">
+    <div className="adminInsertBlock" aria-label={`Inserir conteúdo ${props.positionLabel}`}>
+      <button type="button" disabled={props.busy} onClick={() => props.onInsert("paragraph", props.beforeId)}>+ Texto</button>
+      <button type="button" disabled={props.busy} onClick={() => props.onInsert("heading", props.beforeId)}>+ Subtítulo</button>
+      <button type="button" disabled={props.busy} onClick={() => props.onImageDraft({ beforeId: props.beforeId, alt: "" })}>+ Imagem</button>
+    </div>
+    {active ? <InlineImageDraft alt={props.imageDraft.alt} uploading={props.busy} onAltChange={(alt) => props.onImageDraft({ beforeId: props.beforeId, alt })} onFile={props.onImageFile} onCancel={() => props.onImageDraft(null)} /> : null}
+  </div>;
+}
+
+function ImageBlockFields({ block, busy, onChange, onReplace }: Readonly<{
+  block: ImageBlock; busy: boolean; onChange: (block: ImageBlock) => void; onReplace: (file: File) => void;
+}>): ReactElement {
+  return <><Image src={`/api/admin/media/${block.assetId}`} alt={block.alt} width={block.width} height={block.height} unoptimized />
+    <input aria-label="Descrição acessível" value={block.alt} disabled={busy} onChange={(event) => onChange({ ...block, alt: event.currentTarget.value })} />
+    <input aria-label="Legenda opcional" placeholder="Legenda opcional" value={block.caption ?? ""} disabled={busy} onChange={(event) => onChange({ ...block, caption: event.currentTarget.value })} />
+    <select aria-label="Largura da imagem" value={block.alignment} disabled={busy} onChange={(event) => onChange({ ...block, alignment: event.currentTarget.value === "wide" ? "wide" : "inline" })}><option value="inline">No texto</option><option value="wide">Destaque</option></select>
+    <label className="adminFileControl"><input className="adminVisuallyHiddenFile" type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} aria-label="Substituir imagem interna" onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; if (file) onReplace(file); }} /><span className={`adminButton adminButton--secondary${busy ? " is-disabled" : ""}`} aria-hidden="true">Substituir imagem</span></label></>;
+}
+
+function useInsertedBlockFocus(blocks: readonly ArticleBlock[]): RefObject<string | null> {
+  const focusId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!focusId.current) return;
+    document.getElementById(`article-block-${focusId.current}`)?.focus();
+    focusId.current = null;
+  }, [blocks]);
+  return focusId;
+}
+
+function StructuredBodyEditor({ initialBody, onUploadingChange }: StructuredBodyEditorProps): ReactElement {
   const [blocks, setBlocks] = useState<readonly ArticleBlock[]>(initialBody.blocks);
   const [error, setError] = useState<string | null>(null);
-  const [imageDraft, setImageDraft] = useState<Readonly<{ index: number; alt: string }> | null>(null);
+  const [imageDraft, setImageDraft] = useState<ImageDraft | null>(null);
   const [uploadingInline, setUploadingInline] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
+  const focusIdRef = useInsertedBlockFocus(blocks);
   function update(index: number, block: ArticleBlock): void { setBlocks((current) => current.map((item, position) => position === index ? block : item)); }
-  function insertText(index: number): void { setBlocks((current) => [...current.slice(0, index), { id: crypto.randomUUID(), type: "paragraph", text: "" }, ...current.slice(index)]); }
-  function insertHeading(index: number): void { setBlocks((current) => [...current.slice(0, index), { id: crypto.randomUUID(), type: "heading", level: 2, text: "" }, ...current.slice(index)]); }
-  async function insertImage(index: number, file: File): Promise<void> {
-    const alt = imageDraft?.index === index ? imageDraft.alt.trim() : "";
+  function insertTextBlock(type: "paragraph" | "heading", beforeId: string | null): void {
+    const id = crypto.randomUUID();
+    const block: ArticleBlock = type === "paragraph" ? { id, type, text: "" } : { id, type, level: 2, text: "" };
+    focusIdRef.current = id; setBlocks((current) => insertAtGap(current, beforeId, block)); setAnnouncement(type === "paragraph" ? "Bloco de texto inserido." : "Subtítulo inserido.");
+  }
+  function setUploadState(uploading: boolean): void { setUploadingInline(uploading); onUploadingChange?.(uploading); }
+  async function insertImage(file: File): Promise<void> {
+    const draft = imageDraft; const alt = draft?.alt.trim() ?? "";
     if (alt.length < 5) { setError("A descrição acessível precisa ter pelo menos 5 caracteres."); return; }
     try {
-      setUploadingInline(true); setError(null); const asset = await uploadImage(file, alt);
+      setUploadState(true); setError(null); const asset = await uploadImage(file, alt);
       const block: ArticleBlock = { id: crypto.randomUUID(), type: "image", assetId: asset.id, alt, alignment: "inline", width: asset.width, height: asset.height };
-      setBlocks((current) => [...current.slice(0, index), block, ...current.slice(index)]);
-      setImageDraft(null);
+      focusIdRef.current = block.id; setBlocks((current) => insertAtGap(current, draft?.beforeId ?? null, block)); setImageDraft(null); setAnnouncement("Imagem inserida no artigo.");
     } catch (uploadError) { console.error("Falha no upload de imagem interna.", uploadError); setError(uploadError instanceof Error ? uploadError.message : "Falha no upload."); }
-    finally { setUploadingInline(false); }
+    finally { setUploadState(false); }
   }
   async function replaceImage(index: number, block: Extract<ArticleBlock, { type: "image" }>, file: File): Promise<void> {
     try {
-      setError(null); const asset = await uploadImage(file, block.alt);
-      update(index, { ...block, assetId: asset.id, width: asset.width, height: asset.height });
+      setUploadState(true); setError(null); const asset = await uploadImage(file, block.alt);
+      update(index, { ...block, assetId: asset.id, width: asset.width, height: asset.height }); setAnnouncement("Imagem substituída.");
     } catch (uploadError) { console.error("Falha ao substituir imagem interna.", uploadError); setError(uploadError instanceof Error ? uploadError.message : "Falha no upload."); }
+    finally { setUploadState(false); }
   }
-  return <div className="adminField adminStructuredEditor"><span>Artigo completo</span><input type="hidden" name="bodyJson" value={JSON.stringify({ schemaVersion: 1, blocks })} />
-    {blocks.map((block, index) => <div className="adminStructuredBlock" key={block.id}>{textBlock(block, (next) => update(index, next))}
-      {block.type === "image" ? <><Image src={`/api/admin/media/${block.assetId}`} alt={block.alt} width={800} height={500} unoptimized /><input aria-label="Descrição acessível" value={block.alt} onChange={(event) => update(index, { ...block, alt: event.currentTarget.value })} /><input aria-label="Legenda opcional" placeholder="Legenda opcional" value={block.caption ?? ""} onChange={(event) => update(index, { ...block, caption: event.currentTarget.value })} /><select aria-label="Largura da imagem" value={block.alignment} onChange={(event) => update(index, { ...block, alignment: event.currentTarget.value === "wide" ? "wide" : "inline" })}><option value="inline">No texto</option><option value="wide">Destaque</option></select><label className="adminButton adminButton--secondary">Substituir imagem<input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(event) => { const file = event.currentTarget.files?.[0]; if (file) void replaceImage(index, block, file); }} /></label></> : null}
-      <div className="adminMediaActions"><button type="button" onClick={() => setBlocks((current) => moveBlock(current, index, -1))} aria-label="Mover bloco para cima">↑</button><button type="button" onClick={() => setBlocks((current) => moveBlock(current, index, 1))} aria-label="Mover bloco para baixo">↓</button><button type="button" onClick={() => setBlocks((current) => current.filter((item) => item.id !== block.id))}>Remover</button></div>
-      <div className="adminInsertBlock"><button type="button" onClick={() => insertText(index + 1)}>+ Texto</button><button type="button" onClick={() => insertHeading(index + 1)}>+ Subtítulo</button><button type="button" className="adminButton adminButton--secondary" onClick={() => { setError(null); setImageDraft({ index: index + 1, alt: "" }); }}>+ Imagem</button></div>
-      {imageDraft?.index === index + 1 ? <InlineImageDraft alt={imageDraft.alt} uploading={uploadingInline} onAltChange={(alt) => setImageDraft({ index: index + 1, alt })} onFile={(file) => { void insertImage(index + 1, file); }} onCancel={() => setImageDraft(null)} /> : null}
-    </div>)}{error ? <small role="alert">{error}</small> : null}</div>;
+  return <div className="adminField adminStructuredEditor" aria-busy={uploadingInline}><span>Artigo completo</span><input type="hidden" name="bodyJson" value={JSON.stringify({ schemaVersion: 1, blocks })} />
+    <p className="adminEditorHelp">Use os pontos de inserção para escolher exatamente onde cada texto, subtítulo ou imagem deve aparecer.</p>
+    <InsertGap beforeId={blocks[0]?.id ?? null} positionLabel="antes do primeiro bloco" busy={uploadingInline} imageDraft={imageDraft} onInsert={insertTextBlock} onImageDraft={setImageDraft} onImageFile={(file) => { void insertImage(file); }} />
+    {blocks.map((block, index) => <div key={block.id}><div id={`article-block-${block.id}`} className="adminStructuredBlock" tabIndex={-1}>{textBlock(block, (next) => update(index, next))}
+      {block.type === "image" ? <ImageBlockFields block={block} busy={uploadingInline} onChange={(next) => update(index, next)} onReplace={(file) => { void replaceImage(index, block, file); }} /> : null}
+      <div className="adminMediaActions"><button type="button" disabled={uploadingInline || index === 0} onClick={() => setBlocks((current) => moveBlock(current, index, -1))} aria-label="Mover bloco para cima">↑</button><button type="button" disabled={uploadingInline || index === blocks.length - 1} onClick={() => setBlocks((current) => moveBlock(current, index, 1))} aria-label="Mover bloco para baixo">↓</button><button type="button" disabled={uploadingInline} onClick={() => setBlocks((current) => current.filter((item) => item.id !== block.id))}>Remover</button></div>
+    </div><InsertGap beforeId={blocks[index + 1]?.id ?? null} positionLabel={index === blocks.length - 1 ? "depois do último bloco" : `entre os blocos ${index + 1} e ${index + 2}`} busy={uploadingInline} imageDraft={imageDraft} onInsert={insertTextBlock} onImageDraft={setImageDraft} onImageFile={(file) => { void insertImage(file); }} /></div>)}
+    <span className="adminVisuallyHiddenStatus" aria-live="polite">{announcement}</span>{error ? <small role="alert">{error}</small> : null}</div>;
 }
 
-function ImageSection({ draft }: DraftSectionProps): ReactElement {
+function ImageSection({ draft, onUploadingChange }: DraftSectionProps): ReactElement {
   const legacyCover = draft?.imageUrl && !managedMediaAssetId(draft.imageUrl) ? draft.imageUrl : null;
   const [imageUrl, setImageUrl] = useState(legacyCover ? "" : draft?.imageUrl ?? "");
   const [imageAlt, setImageAlt] = useState(draft?.imageAlt ?? "");
@@ -228,14 +298,14 @@ function ImageSection({ draft }: DraftSectionProps): ReactElement {
 
   async function uploadCover(file: File): Promise<void> {
     if (imageAlt.trim().length < 5) { setError("Descreva a imagem antes de enviar a capa."); return; }
-    setUploading(true); setError(null);
+    setUploading(true); onUploadingChange?.(true); setError(null);
     try {
       const asset = await uploadImage(file, imageAlt.trim());
       setImageUrl(`/media/${asset.id}`);
     } catch (uploadError) {
       console.error("Falha no upload da imagem principal.", uploadError);
       setError(uploadError instanceof Error ? uploadError.message : "Falha no upload da capa.");
-    } finally { setUploading(false); }
+    } finally { setUploading(false); onUploadingChange?.(false); }
   }
 
   return (
@@ -285,11 +355,12 @@ function FeedbackMessage({ feedback }: Readonly<{ feedback: Feedback | null }>):
   return <span className="mockFeedback" role={feedback.kind === "error" ? "alert" : "status"} style={style}>{feedback.message}</span>;
 }
 
-type DraftActionsProps = Readonly<{ phase: EditorPhase; feedback: Feedback | null }>;
+type DraftActionsProps = Readonly<{ phase: EditorPhase; feedback: Feedback | null; mediaUploading: boolean }>;
 
-function DraftActions({ phase, feedback }: DraftActionsProps): ReactElement {
+function DraftActions({ phase, feedback, mediaUploading }: DraftActionsProps): ReactElement {
   const saving = phase === "saving";
-  return <div className="adminFormActions"><button className="adminButton adminButton--primary" type="submit" disabled={saving}>{saving ? "Salvando…" : "Salvar rascunho"}</button><FeedbackMessage feedback={feedback} /></div>;
+  const busy = saving || mediaUploading;
+  return <div className="adminFormActions"><button className="adminButton adminButton--primary" type="submit" disabled={busy}>{saving ? "Salvando…" : mediaUploading ? "Aguarde o envio da imagem…" : "Salvar rascunho"}</button><FeedbackMessage feedback={feedback} /></div>;
 }
 
 type WorkflowActionsProps = Readonly<{
@@ -342,6 +413,11 @@ export function ArticleEditor(): ReactElement {
   const [loading, setLoading] = useState(true);
   const [loadFailure, setLoadFailure] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const [mediaUploads, setMediaUploads] = useState<Readonly<Record<"body" | "cover", boolean>>>({ body: false, cover: false });
+  const mediaUploading = mediaUploads.body || mediaUploads.cover;
+  function trackUpload(source: "body" | "cover", uploading: boolean): void {
+    setMediaUploads((current) => ({ ...current, [source]: uploading }));
+  }
 
   useEffect(() => {
     const requestedArticleId = new URLSearchParams(window.location.search).get("article");
@@ -362,7 +438,9 @@ export function ArticleEditor(): ReactElement {
   }, [loadAttempt]);
 
   async function createDraft(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault(); setPhase("saving"); setFeedback(null);
+    event.preventDefault();
+    if (mediaUploading) { setFeedback({ kind: "error", message: "Aguarde o envio da imagem terminar antes de salvar." }); return; }
+    setPhase("saving"); setFeedback(null);
     try {
       const result = await sendJson("/api/admin/articles", articleDraft(event.currentTarget, article?.id));
       if (!result.response.ok) throw new Error(apiError(result.payload, "Não foi possível salvar o rascunho."));
@@ -431,6 +509,6 @@ export function ArticleEditor(): ReactElement {
   if (loadFailure) return <div className="adminEmpty" role="alert"><strong>Não foi possível abrir este artigo.</strong><p>{loadFailure}</p><div className="adminFormActions"><button type="button" className="adminButton adminButton--primary" onClick={() => { setLoadFailure(null); setLoading(true); setLoadAttempt((current) => current + 1); }}>Tentar novamente</button><a className="adminButton adminButton--secondary" href="/admin/artigos">Voltar aos artigos</a></div></div>;
   const draftLocked = article !== null && !editingSaved;
   return (
-    <div className="adminEditorLayout"><AdminCard><form key={article?.revisionId ?? initialDraft?.articleId ?? "new"} onSubmit={createDraft} aria-busy={phase === "saving" || phase === "reviewing" || phase === "publishing"}><fieldset disabled={draftLocked} style={{ border: 0, margin: 0, padding: 0 }}><VideoSourceSection draft={initialDraft} /><EditorialSection draft={initialDraft} /><ImageSection draft={initialDraft} /><OpinionAndFaqSection draft={initialDraft} /><SeoSection draft={initialDraft} /></fieldset>{article && !editingSaved ? <WorkflowActions phase={phase} article={article} confirmed={confirmed} feedback={feedback} onConfirm={setConfirmed} onEdit={editSavedDraft} onReview={submitForReview} onPublish={publish} /> : <DraftActions phase={phase} feedback={feedback} />}</form></AdminCard>{article ? <RevisionHistory article={article} onRestored={reloadRestoredDraft} /> : null}</div>
+    <div className="adminEditorLayout"><AdminCard><form key={article?.revisionId ?? initialDraft?.articleId ?? "new"} onSubmit={createDraft} aria-busy={phase === "saving" || phase === "reviewing" || phase === "publishing" || mediaUploading}><fieldset disabled={draftLocked} style={{ border: 0, margin: 0, padding: 0 }}><VideoSourceSection draft={initialDraft} /><EditorialSection draft={initialDraft} onUploadingChange={(uploading) => trackUpload("body", uploading)} /><ImageSection draft={initialDraft} onUploadingChange={(uploading) => trackUpload("cover", uploading)} /><OpinionAndFaqSection draft={initialDraft} /><SeoSection draft={initialDraft} /></fieldset>{article && !editingSaved ? <WorkflowActions phase={phase} article={article} confirmed={confirmed} feedback={feedback} onConfirm={setConfirmed} onEdit={editSavedDraft} onReview={submitForReview} onPublish={publish} /> : <DraftActions phase={phase} feedback={feedback} mediaUploading={mediaUploading} />}</form></AdminCard>{article ? <RevisionHistory article={article} onRestored={reloadRestoredDraft} /> : null}</div>
   );
 }

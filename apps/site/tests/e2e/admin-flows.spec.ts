@@ -82,10 +82,10 @@ test("editor insere imagem interna sem depender de diálogo do navegador", async
       ? route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "Armazenamento temporariamente indisponível." }) })
       : route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ asset: { id: "inline-asset", url: "/media/inline-asset", altText: "Moto preta estacionada em uma garagem", width: 560, height: 350 } }) });
   });
-  await page.route("**/api/admin/media/inline-asset", (route) => route.fulfill({ status: 200, contentType: "image/png", body: Buffer.from("imagem") }));
+  await page.route("**/api/admin/media/inline-asset", (route) => route.fulfill({ status: 200, contentType: "image/png", body: coverPng }));
   await page.goto("/admin/artigos/novo", { waitUntil: "networkidle" });
 
-  await page.getByRole("button", { name: "+ Imagem" }).click();
+  await page.locator(".adminInsertGap").last().getByRole("button", { name: "+ Imagem" }).click();
   const form = page.getByRole("group", { name: "Adicionar imagem interna" });
   await expect(form).toBeVisible();
   const fileInput = form.locator('input[type="file"]');
@@ -94,12 +94,62 @@ test("editor insere imagem interna sem depender de diálogo do navegador", async
   await expect(fileInput).toBeEnabled();
   await fileInput.focus();
   await expect(fileInput).toBeFocused();
-  await fileInput.setInputFiles({ name: "moto.png", mimeType: "image/png", buffer: Buffer.from("imagem") });
+  await fileInput.setInputFiles({ name: "moto.png", mimeType: "image/png", buffer: coverPng });
   await expect(page.getByRole("alert")).toContainText("Armazenamento temporariamente indisponível.");
-  await fileInput.setInputFiles({ name: "moto.png", mimeType: "image/png", buffer: Buffer.from("imagem") });
+  await fileInput.setInputFiles({ name: "moto.png", mimeType: "image/png", buffer: coverPng });
 
-  await expect(page.getByRole("img", { name: "Moto preta estacionada em uma garagem" })).toBeVisible();
+  const preview = page.getByRole("img", { name: "Moto preta estacionada em uma garagem" });
+  await expect(preview).toBeVisible();
+  await expect.poll(() => preview.evaluate((image) => image instanceof HTMLImageElement ? image.naturalWidth : 0)).toBeGreaterThan(0);
   await expect(form).toHaveCount(0);
+});
+
+test("editor insere imagem no ponto escolhido e preserva a ordem", async ({ page }) => {
+  const inlineAssetId = "22222222-2222-4222-8222-222222222222";
+  const uploadGate: { release: () => void } = { release: () => undefined };
+  const uploadReleased = new Promise<void>((resolve) => { uploadGate.release = resolve; });
+  await page.route("**/api/admin/media", async (route) => {
+    await uploadReleased;
+    await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ asset: { id: inlineAssetId, url: `/media/${inlineAssetId}`, altText: "Imagem posicionada entre os parágrafos", width: 1200, height: 675 } }) });
+  });
+  await page.route(`**/api/admin/media/${inlineAssetId}`, (route) => route.fulfill({ status: 200, contentType: "image/png", body: coverPng }));
+  await page.goto("/admin/artigos/novo", { waitUntil: "networkidle" });
+
+  const firstParagraph = page.getByRole("textbox", { name: "Parágrafo" }).first();
+  await firstParagraph.fill("Primeiro parágrafo do artigo.");
+  await page.locator(".adminInsertGap").last().getByRole("button", { name: "+ Texto" }).click();
+  await page.getByRole("textbox", { name: "Parágrafo" }).last().fill("Segundo parágrafo do artigo.");
+
+  const middleGap = page.locator(".adminInsertGap").nth(1);
+  await middleGap.getByRole("button", { name: "+ Imagem" }).click();
+  const imageDraft = middleGap.getByRole("group", { name: "Adicionar imagem interna" });
+  await imageDraft.getByRole("textbox", { name: "Descrição acessível" }).fill("Imagem posicionada entre os parágrafos");
+  await imageDraft.locator('input[type="file"]').setInputFiles({ name: "entre-paragrafos.png", mimeType: "image/png", buffer: coverPng });
+
+  await expect(page.getByRole("button", { name: /Aguarde o envio da imagem/i })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Mover bloco para cima" }).first()).toBeDisabled();
+  uploadGate.release();
+
+  await expect(page.getByRole("img", { name: "Imagem posicionada entre os parágrafos" })).toBeVisible();
+  const bodyJson = await page.locator('[name="bodyJson"]').inputValue();
+  const document = JSON.parse(bodyJson) as { blocks: Array<{ type: string; assetId?: string; text?: string }> };
+  expect(document.blocks.map((block) => block.type)).toEqual(["paragraph", "image", "paragraph"]);
+  expect(document.blocks[0]?.text).toBe("Primeiro parágrafo do artigo.");
+  expect(document.blocks[1]?.assetId).toBe(inlineAssetId);
+  expect(document.blocks[2]?.text).toBe("Segundo parágrafo do artigo.");
+  await expect(page.locator('input[type="file"][aria-label="Substituir imagem interna"]')).toBeAttached();
+  await page.locator('input[type="file"][aria-label="Substituir imagem interna"]').focus();
+  await expect(page.locator('input[type="file"][aria-label="Substituir imagem interna"]')).toBeFocused();
+});
+
+test("editor vazio continua oferecendo pontos de inserção", async ({ page }) => {
+  await page.goto("/admin/artigos/novo", { waitUntil: "networkidle" });
+  await page.locator(".adminStructuredBlock").getByRole("button", { name: "Remover" }).click();
+  await expect(page.locator(".adminStructuredBlock")).toHaveCount(0);
+  const emptyGap = page.locator(".adminInsertGap");
+  await expect(emptyGap).toHaveCount(1);
+  await emptyGap.getByRole("button", { name: "+ Subtítulo" }).click();
+  await expect(page.getByRole("textbox", { name: "Subtítulo H2" })).toBeVisible();
 });
 
 test("novo artigo abre vazio e sem checklist lateral", async ({ page }) => {
