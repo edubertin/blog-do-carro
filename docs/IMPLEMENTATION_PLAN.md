@@ -178,13 +178,13 @@ A especificação completa do painel, RBAC, audit log, conectores e limites do m
 
 - Portal público e CMS editorial publicados e estabilizados no runtime Vinext/Sites.
 - Build empacota o worker, assets e `.openai/hosting.json`.
-- Leitura pública D1 e escritas CMS estão ativas em produção, com autorização server-side e projeção publicada. O R2 permanece fail-closed para entrega pública de mídia. Não existe efeito externo de pagamento ou envio.
+- Leitura pública D1, escritas CMS, upload R2 e entrega de mídia publicada estão ativos em produção, com autorização server-side, flags independentes e projeção publicada. Não existe efeito externo de pagamento ou envio.
 - As migrations D1 e o seed não sensível estão versionados, passam em SQLite efêmero e são exercitados no runtime local.
 - Carrossel, conteúdo editorial, busca, loja e checkout demonstrativo consomem contratos server-side e estão prontos para validação visual.
 - O CMS administrativo persiste artigos, produtos, composição da home e menu no D1, com fronteira SIWC/owner, audit log e nenhuma chamada externa. A autorização usa IDs estáveis provisionados fora do Git; o bootstrap temporário por e-mail está desligado.
 - A projeção pública já alimenta home, navegação, artigo, relacionados, categorias, sitemap e catálogo; corpos editoriais e SQL não entram nos chunks do navegador.
 - Catálogo atual: chaveiro disponível no fluxo demonstrativo por `R$ 9,90` e miniatura `coming_soon`, sem CTA de compra. A navegação editorial foi removida temporariamente da home.
-- Próximo corte: homologar armazenamento/publicação R2 e entregar o editor de blocos v1 com rollback seguro.
+- Corte atual: homologar o ciclo real D1/R2 e entregar histórico de revisões com restauração atômica, controle de concorrência e auditoria.
 
 ## Spike — vídeo novo para artigo e carrossel
 

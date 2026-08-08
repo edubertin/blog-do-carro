@@ -10,9 +10,9 @@
 
 ## Current State
 
-- Active phase: homologação editorial em produção e preparação do editor de blocos com mídia própria.
+- Active phase: homologação editorial em produção, com editor de blocos, mídia própria e recuperação de revisões.
 - Production status: portal público no Sites; leitura pública D1 e escritas CMS estão ativas, protegidas por autorização server-side e projeção publicada.
-- Media status: binding R2 e upload staged existem, mas a entrega pública de mídia continua fail-closed até a homologação do ciclo completo.
+- Media status: binding R2, upload e entrega pública estão ativos por flags independentes; mídias `staged` continuam privadas e somente revisões publicadas promovem seus assets.
 - Commerce status: catálogo e checkout são demonstrativos, sem cobrança, pedido persistente ou envio. O chaveiro custa `R$ 9,90`; a miniatura permanece `coming_soon` e não pode entrar no carrinho.
 - Open decisions: datas oficiais dos quatro vídeos, separação física do futuro D1 comercial/PII e homologação de mídia R2 e conectores.
 
@@ -21,7 +21,7 @@
 - Domínio canônico definitivo: `https://blogdocarro.com`.
 - O CMS editorial será interno ao admin, com D1 como única fonte de verdade e uma interface de repositório entre domínio e persistência.
 - O portal público consumirá somente uma projeção publicada; rascunhos e revisões nunca serão lidos diretamente pelas rotas públicas.
-- R2 é o armazenamento aprovado para mídia própria; upload e publicação permanecem capacidades independentes e fail-closed.
+- R2 é o armazenamento aprovado para mídia própria; upload e publicação permanecem capacidades independentes, autorizadas no servidor e reversíveis por flag.
 - A identidade administrativa usará Sites/ChatGPT Sign in with ChatGPT (SIWC), com bootstrap de owner exclusivamente server-side e fora do Git.
 - Identidade, sessão e autorização do admin permanecerão separadas da conta de cliente; permissões administrativas serão aplicadas por RBAC no servidor.
 - Pagamento futuro: Mercado Pago exclusivamente para Pix; integração real bloqueada por credenciais, webhooks, homologação e gates comerciais.
@@ -35,7 +35,7 @@
 
 - App: `apps/site`, App Router compatível via Vinext, React e TypeScript estrito.
 - Runtime: Vite e Cloudflare Worker empacotado para Sites.
-- Database/storage: D1 ativo para leitura pública projetada e escritas CMS; R2 provisionado para mídia staged, ainda sem publicação pública homologada.
+- Database/storage: D1 ativo para leitura pública projetada e escritas CMS; R2 ativo para mídia staged e entrega pública somente de assets vinculados a revisões publicadas.
 - Commerce: fluxo demonstrativo local, sem cobrança ou envio; Mercado Pago Pix é apenas o destino futuro aprovado.
 - Observability: fundação local com request ID e limite de erro; nenhum coletor externo conectado.
 

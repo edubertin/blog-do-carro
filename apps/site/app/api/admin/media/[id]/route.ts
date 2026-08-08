@@ -7,13 +7,13 @@ export async function GET(request: Request, routeContext: RouteContext): Promise
   const context = requireAdminRead(request, "content.read");
   if (isAdminResponse(context)) return context;
   const bucket = getRuntimeMediaBucket();
-  if (!bucket) return adminError(503, "Biblioteca de mÃ­dia indisponÃ­vel.");
+  if (!bucket) return adminError(503, "Biblioteca de mídia indisponível.");
   try {
     const { id } = await routeContext.params;
     const row = await context.database.prepare("SELECT object_key, content_type FROM media_assets WHERE id = ? AND lifecycle_state <> 'archived' LIMIT 1").bind(id).first();
-    if (!row || typeof row.object_key !== "string" || typeof row.content_type !== "string") return adminError(404, "MÃ­dia nÃ£o encontrada.");
+    if (!row || typeof row.object_key !== "string" || typeof row.content_type !== "string") return adminError(404, "Mídia não encontrada.");
     const object = await bucket.get(row.object_key);
-    if (!object) return adminError(404, "MÃ­dia nÃ£o encontrada.");
+    if (!object) return adminError(404, "Mídia não encontrada.");
     return new Response(object.body, { headers: { "Cache-Control": "private, no-store", "Content-Type": row.content_type } });
   } catch (error) {
     return adminFailure(error, "media.read");

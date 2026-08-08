@@ -7,6 +7,7 @@ import { legacyBodyToDocument, parseArticleContent } from "@/domain/article-cont
 import type { ArticleBlock, ArticleContentDocument } from "@/domain/article-content";
 import { AdminCard } from "../../admin-ui";
 import Image from "next/image";
+import { RevisionHistory } from "./revision-history";
 
 type Feedback = Readonly<{ kind: "success" | "error"; message: string }>;
 type EditorPhase = "editing" | "saving" | "ready" | "reviewing" | "review" | "publishing" | "published";
@@ -385,9 +386,20 @@ export function ArticleEditor(): ReactElement {
     setEditingSaved(true); setConfirmed(false); setPhase("editing"); setFeedback(null);
   }
 
+  async function reloadRestoredDraft(): Promise<void> {
+    if (!article) return;
+    const record = await loadEditorRecord(article.id);
+    setArticle(record.article);
+    setInitialDraft(record.draft);
+    setEditingSaved(true);
+    setConfirmed(false);
+    setPhase("editing");
+    setFeedback(null);
+  }
+
   if (loading) return <div className="adminEmpty" role="status"><strong>Carregando artigo…</strong></div>;
   const draftLocked = article !== null && !editingSaved;
   return (
-    <div className="adminEditorLayout"><AdminCard><form key={initialDraft?.articleId ?? "new"} onSubmit={createDraft} aria-busy={phase === "saving" || phase === "reviewing" || phase === "publishing"}><fieldset disabled={draftLocked} style={{ border: 0, margin: 0, padding: 0 }}><VideoSourceSection draft={initialDraft} /><EditorialSection draft={initialDraft} /><ImageSection draft={initialDraft} /><OpinionAndFaqSection draft={initialDraft} /><SeoSection draft={initialDraft} /></fieldset>{article && !editingSaved ? <WorkflowActions phase={phase} article={article} confirmed={confirmed} feedback={feedback} onConfirm={setConfirmed} onEdit={editSavedDraft} onReview={submitForReview} onPublish={publish} /> : <DraftActions phase={phase} feedback={feedback} />}</form></AdminCard></div>
+    <div className="adminEditorLayout"><AdminCard><form key={article?.revisionId ?? initialDraft?.articleId ?? "new"} onSubmit={createDraft} aria-busy={phase === "saving" || phase === "reviewing" || phase === "publishing"}><fieldset disabled={draftLocked} style={{ border: 0, margin: 0, padding: 0 }}><VideoSourceSection draft={initialDraft} /><EditorialSection draft={initialDraft} /><ImageSection draft={initialDraft} /><OpinionAndFaqSection draft={initialDraft} /><SeoSection draft={initialDraft} /></fieldset>{article && !editingSaved ? <WorkflowActions phase={phase} article={article} confirmed={confirmed} feedback={feedback} onConfirm={setConfirmed} onEdit={editSavedDraft} onReview={submitForReview} onPublish={publish} /> : <DraftActions phase={phase} feedback={feedback} />}</form></AdminCard>{article ? <RevisionHistory article={article} onRestored={reloadRestoredDraft} /> : null}</div>
   );
 }

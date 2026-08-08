@@ -1,5 +1,6 @@
 import type {
   AdminArticleSummary,
+  AdminArticleRevisionSummary,
   AdminArticleEditorRecord,
   AdminHomeSection,
   AdminMenuItem,
@@ -241,6 +242,19 @@ export async function listAdminArticles(database: D1Database): Promise<readonly 
   return result.results.map(articleSummary);
 }
 
+export async function listArticleRevisions(database: D1Database, articleId: string): Promise<readonly AdminArticleRevisionSummary[]> {
+  await existingArticle(database, articleId);
+  const query = "SELECT r.id, r.revision_number, r.workflow_state, r.created_at, p.display_label FROM article_revisions r LEFT JOIN admin_principals p ON p.id = r.created_by_principal_id WHERE r.article_id = ? ORDER BY r.revision_number DESC";
+  const result = await database.prepare(query).bind(articleId).all();
+  return result.results.map((row) => ({
+    id: text(row, "id"),
+    version: integer(row, "revision_number"),
+    state: text(row, "workflow_state") as AdminArticleRevisionSummary["state"],
+    createdAt: integer(row, "created_at"),
+    actor: row.display_label === null ? null : text(row, "display_label"),
+  }));
+}
+
 export async function archiveArticle(context: AdminWriteContext, articleId: string): Promise<void> {
   const principal = await ensurePrincipal(context);
   const now = Date.now();
@@ -262,6 +276,13 @@ async function publicationSource(database: D1Database, articleId: string): Promi
   const query = "SELECT a.id, a.slug, a.working_revision_id AS revision_id, r.workflow_state, r.title, r.subtitle, r.seo_description, r.body_json, r.opinion, r.image_url, r.image_alt, r.read_time_minutes, c.id AS category_id, c.name AS category_name, c.slug AS category_slug, y.external_id AS youtube_video_external_id, CASE WHEN y.import_state = 'imported' THEN 'ready' ELSE 'pending' END AS video_availability FROM articles a JOIN article_revisions r ON r.id = a.working_revision_id JOIN article_revision_categories arc ON arc.revision_id = r.id AND arc.is_primary = 1 JOIN categories c ON c.id = arc.category_id JOIN youtube_videos y ON y.id = a.source_video_id WHERE a.id = ? AND a.lifecycle_state <> 'archived' LIMIT 1";
   const row = await database.prepare(query).bind(articleId).first();
   if (!row) throw missingResource("Rascunho editorial não encontrado.");
+  return row;
+}
+
+async function revisionSource(database: D1Database, articleId: string, revisionId: string): Promise<D1Row> {
+  const query = "SELECT a.id, a.slug, r.id AS revision_id, r.title, r.subtitle, r.seo_description, r.body_json, r.opinion, r.image_url, r.image_alt, r.read_time_minutes, c.id AS category_id, c.name AS category_name, c.slug AS category_slug, y.external_id AS youtube_video_external_id, CASE WHEN y.import_state = 'imported' THEN 'ready' ELSE 'pending' END AS video_availability FROM articles a JOIN article_revisions r ON r.article_id = a.id JOIN article_revision_categories arc ON arc.revision_id = r.id AND arc.is_primary = 1 JOIN categories c ON c.id = arc.category_id JOIN youtube_videos y ON y.id = a.source_video_id WHERE a.id = ? AND r.id = ? AND a.lifecycle_state <> 'archived' LIMIT 1";
+  const row = await database.prepare(query).bind(articleId, revisionId).first();
+  if (!row) throw missingResource("Revisão editorial não encontrada.");
   return row;
 }
 
@@ -311,6 +332,77 @@ export async function revisionMediaObjectKeys(database: D1Database, articleId: s
   const query = "SELECT m.object_key FROM articles a JOIN article_revision_media arm ON arm.revision_id = a.working_revision_id JOIN media_assets m ON m.id = arm.media_asset_id WHERE a.id = ? AND m.lifecycle_state IN ('staged', 'published')";
   const result = await database.prepare(query).bind(articleId).all();
   return result.results.map((row) => text(row, "object_key"));
+}
+
+export async function revisionMediaObjectKeysForRestore(database: D1Database, articleId: string, revisionId: string): Promise<readonly string[]> {
+  await revisionSource(database, articleId, revisionId);
+  const query = "SELECT m.object_key FROM article_revision_media arm JOIN media_assets m ON m.id = arm.media_asset_id WHERE arm.revision_id = ? AND m.lifecycle_state IN ('staged', 'published')";
+  const result = await database.prepare(query).bind(revisionId).all();
+  return result.results.map((row) => text(row, "object_key"));
+}
+
+function restoredRevisionStatements(
+  context: AdminWriteContext,
+  articleId: string,
+  sourceRevisionId: string,
+  restoredRevisionId: string,
+  revisionNumber: number,
+  principal: string,
+  now: number,
+  expectedVersion: number,
+): readonly D1PreparedStatement[] {
+  const database = context.database;
+  return [
+    database.prepare("INSERT INTO article_revisions (id, article_id, revision_number, workflow_state, author_id, title, subtitle, seo_description, body_json, opinion, image_url, image_alt, read_time_minutes, published_at, created_by_principal_id, created_at, version, updated_at) SELECT ?, r.article_id, ?, 'published', r.author_id, r.title, r.subtitle, r.seo_description, r.body_json, r.opinion, r.image_url, r.image_alt, r.read_time_minutes, ?, ?, ?, 1, ? FROM article_revisions r JOIN articles a ON a.id = r.article_id WHERE r.id = ? AND r.article_id = ? AND a.version = ?").bind(restoredRevisionId, revisionNumber, now, principal, now, now, sourceRevisionId, articleId, expectedVersion),
+    database.prepare("INSERT INTO article_revision_categories (revision_id, category_id, is_primary) SELECT ?, category_id, is_primary FROM article_revision_categories WHERE revision_id = ? AND EXISTS (SELECT 1 FROM article_revisions WHERE id = ?)").bind(restoredRevisionId, sourceRevisionId, restoredRevisionId),
+    database.prepare("INSERT INTO article_revision_faqs (id, revision_id, position, question, answer) SELECT lower(hex(randomblob(16))), ?, position, question, answer FROM article_revision_faqs WHERE revision_id = ? AND EXISTS (SELECT 1 FROM article_revisions WHERE id = ?)").bind(restoredRevisionId, sourceRevisionId, restoredRevisionId),
+    database.prepare("INSERT INTO article_revision_media (revision_id, media_asset_id, usage, block_id, position, alt_text, caption) SELECT ?, media_asset_id, usage, block_id, position, alt_text, caption FROM article_revision_media WHERE revision_id = ? AND EXISTS (SELECT 1 FROM article_revisions WHERE id = ?)").bind(restoredRevisionId, sourceRevisionId, restoredRevisionId),
+  ];
+}
+
+function restoreProjectionStatement(context: AdminWriteContext, source: D1Row, faqJson: string, revisionId: string, version: number, now: number): D1PreparedStatement {
+  const bodyJson = text(source, "body_json");
+  const searchable = normalizedSearchText([text(source, "title"), text(source, "subtitle"), text(source, "category_name"), articleText(articleBody(source, "body_json"))].join(" "));
+  const video = source.youtube_video_external_id === null ? null : text(source, "youtube_video_external_id");
+  const sql = "INSERT INTO published_article_projections (article_id, revision_id, slug, category_name, category_slug, title, subtitle, seo_description, search_text, image_url, image_alt, youtube_video_external_id, video_availability, date_label, body_json, opinion, faq_json, read_time_minutes, published_at, updated_at) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PUBLICADO', ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM articles WHERE id = ? AND working_revision_id = ? AND version = ?) ON CONFLICT(article_id) DO UPDATE SET revision_id = excluded.revision_id, slug = excluded.slug, category_name = excluded.category_name, category_slug = excluded.category_slug, title = excluded.title, subtitle = excluded.subtitle, seo_description = excluded.seo_description, search_text = excluded.search_text, image_url = excluded.image_url, image_alt = excluded.image_alt, youtube_video_external_id = excluded.youtube_video_external_id, video_availability = excluded.video_availability, date_label = excluded.date_label, body_json = excluded.body_json, opinion = excluded.opinion, faq_json = excluded.faq_json, read_time_minutes = excluded.read_time_minutes, published_at = COALESCE(published_article_projections.published_at, excluded.published_at), updated_at = excluded.updated_at";
+  return context.database.prepare(sql).bind(text(source, "id"), revisionId, text(source, "slug"), text(source, "category_name"), text(source, "category_slug"), text(source, "title"), text(source, "subtitle"), text(source, "seo_description"), searchable, text(source, "image_url"), text(source, "image_alt"), video, text(source, "video_availability"), bodyJson, text(source, "opinion"), faqJson, integer(source, "read_time_minutes"), now, now, text(source, "id"), revisionId, version);
+}
+
+function restoreAuditStatement(context: AdminWriteContext, principal: string, articleId: string, revisionId: string, version: number): D1PreparedStatement {
+  const sql = "INSERT INTO audit_events (id, occurred_at, request_id, actor_kind, actor_principal_id, permission, action, resource_type, resource_id, environment, result) SELECT ?, ?, ?, 'admin', ?, 'content.publish', 'article.revision.restored', 'article', ?, ?, 'allowed' WHERE EXISTS (SELECT 1 FROM articles WHERE id = ? AND working_revision_id = ? AND version = ?)";
+  return context.database.prepare(sql).bind(crypto.randomUUID(), Date.now(), context.requestId, principal, articleId, context.environment, articleId, revisionId, version);
+}
+
+export async function restoreArticleRevision(
+  context: AdminWriteContext,
+  articleId: string,
+  revisionId: string,
+  expectedVersion: number,
+): Promise<AdminArticleEditorRecord> {
+  if (!Number.isInteger(expectedVersion) || expectedVersion < 1) throw invalidInput("Versão esperada inválida.");
+  const principal = await ensurePrincipal(context);
+  const article = await existingArticle(context.database, articleId);
+  if (integer(article, "version") !== expectedVersion) throw conflictingResource("O artigo foi alterado por outro administrador. Recarregue antes de restaurar.");
+  const source = await revisionSource(context.database, articleId, revisionId);
+  await assertRevisionMediaPublishable(context.database, revisionId);
+  const faqJson = await publicationFaq(context.database, revisionId);
+  const restoredRevisionId = crypto.randomUUID();
+  const revisionNumber = integer(article, "revision_number") + 1;
+  const now = Date.now();
+  const restoredVersion = expectedVersion + 1;
+  const statements = restoredRevisionStatements(context, articleId, revisionId, restoredRevisionId, revisionNumber, principal, now, expectedVersion);
+  await context.database.batch([
+    ...statements,
+    context.database.prepare("UPDATE articles SET working_revision_id = ?, published_revision_id = ?, lifecycle_state = 'active', version = version + 1, updated_at = ? WHERE id = ? AND version = ? AND EXISTS (SELECT 1 FROM article_revisions WHERE id = ?)").bind(restoredRevisionId, restoredRevisionId, now, articleId, expectedVersion, restoredRevisionId),
+    restoreProjectionStatement(context, source, faqJson, restoredRevisionId, restoredVersion, now),
+    context.database.prepare("DELETE FROM published_article_categories WHERE article_id = ? AND EXISTS (SELECT 1 FROM articles WHERE id = ? AND working_revision_id = ? AND version = ?)").bind(articleId, articleId, restoredRevisionId, restoredVersion),
+    context.database.prepare("INSERT INTO published_article_categories (article_id, category_id, published_at) SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM articles WHERE id = ? AND working_revision_id = ? AND version = ?)").bind(articleId, text(source, "category_id"), now, articleId, restoredRevisionId, restoredVersion),
+    context.database.prepare("UPDATE media_assets SET lifecycle_state = 'published', updated_at = ? WHERE id IN (SELECT media_asset_id FROM article_revision_media WHERE revision_id = ?) AND lifecycle_state = 'staged' AND EXISTS (SELECT 1 FROM articles WHERE id = ? AND working_revision_id = ? AND version = ?)").bind(now, restoredRevisionId, articleId, restoredRevisionId, restoredVersion),
+    restoreAuditStatement(context, principal, articleId, restoredRevisionId, restoredVersion),
+  ]);
+  const restored = await context.database.prepare("SELECT 1 AS restored FROM articles WHERE id = ? AND working_revision_id = ? AND version = ? LIMIT 1").bind(articleId, restoredRevisionId, restoredVersion).first();
+  if (!restored) throw conflictingResource("O artigo foi alterado por outro administrador. Recarregue antes de restaurar.");
+  return getAdminArticle(context.database, articleId);
 }
 
 export async function submitArticleForReview(context: AdminWriteContext, articleId: string): Promise<void> {

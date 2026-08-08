@@ -25,7 +25,7 @@ export function CartPage({ products }: CartPageProps): ReactElement {
   const subtotal = lines.reduce((total, line) => total + line.product.priceCents * line.item.quantity, 0);
   return (
     <div className="commerceShell cartShell">
-      <CommerceHeader eyebrow="Compra simulada" title="Revise seus produtos." description="A prÃ³xima etapa coleta dados somente na memÃ³ria desta pÃ¡gina." />
+      <CommerceHeader eyebrow="Compra simulada" title="Revise seus produtos." description="A próxima etapa coleta dados somente na memória desta página." />
       <div className="cartLayout">
         <section className="cartList" aria-label="Itens do carrinho">
           {lines.map(({ item, product }) => (
@@ -80,7 +80,6 @@ function CommerceLoading(): ReactElement {
 
 function EmptyCart(): ReactElement {
   return (
-    <div className="commerceShell emptyCommerce"><ShoppingCartSimple size={38} weight="duotone" /><span className="eyebrow">Carrinho vazio</span><h1>Seus produtos ainda nÃ£o entraram aqui.</h1><p>Escolha um item para percorrer a demonstraÃ§Ã£o completa.</p><Link className="primaryButton" href="/loja">Conhecer a loja <ArrowRight size={19} /></Link></div>
+    <div className="commerceShell emptyCommerce"><ShoppingCartSimple size={38} weight="duotone" /><span className="eyebrow">Carrinho vazio</span><h1>Seus produtos ainda não entraram aqui.</h1><p>Escolha um item para percorrer a demonstração completa.</p><Link className="primaryButton" href="/loja">Conhecer a loja <ArrowRight size={19} /></Link></div>
   );
 }
-

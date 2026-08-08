@@ -28,8 +28,8 @@ export async function PATCH(request: Request): Promise<Response> {
   if (isAdminResponse(context)) return context;
   try {
     const body = await request.json();
-    if (typeof body !== "object" || body === null || !("id" in body) || !("archived" in body)) throw new Error("Entrada invÃ¡lida.");
-    if (typeof body.id !== "string" || typeof body.archived !== "boolean") throw new Error("Entrada invÃ¡lida.");
+    if (typeof body !== "object" || body === null || !("id" in body) || !("archived" in body)) throw new Error("Entrada inválida.");
+    if (typeof body.id !== "string" || typeof body.archived !== "boolean") throw new Error("Entrada inválida.");
     await setProductArchived(context, body.id, body.archived);
     return Response.json({ ok: true });
   } catch (error) {

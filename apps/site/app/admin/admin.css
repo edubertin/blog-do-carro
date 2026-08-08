@@ -477,6 +477,28 @@ body:has(.adminDrawerLayer[data-open="true"]) { overflow: hidden; }
 .adminInsertBlock button, .adminStructuredBlock .adminMediaActions button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--admin-line); border-radius: 999px; color: inherit; background: transparent; }
 .adminPublishConfirmation { min-height: 48px; display: flex; align-items: center; gap: 10px; color: #c8c8c2; font-size: .82rem; font-weight: 700; }
 .adminPublishConfirmation input { width: 22px; height: 22px; flex: 0 0 auto; }
+.adminRevisionHistory { margin-top: 14px; padding: 18px 15px; background: #111; border: 1px solid var(--admin-line); border-radius: 18px; }
+.adminRevisionIntro { display: grid; gap: 9px; }
+.adminRevisionIntro span { color: var(--admin-brand); font-size: .58rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.adminRevisionIntro h2 { margin-top: 4px; font-size: 1.15rem; }
+.adminRevisionIntro p { max-width: 58ch; color: var(--admin-muted); font-size: .7rem; line-height: 1.55; }
+.adminRevisionList { margin: 18px 0 0; padding: 0; display: grid; gap: 9px; list-style: none; }
+.adminRevisionCard { padding: 14px; display: grid; gap: 11px; background: #0c0c0c; border: 1px solid #2c2c2c; border-radius: 14px; }
+.adminRevisionCard--current { background: #19170e; border-color: #5f4b12; }
+.adminRevisionHeading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.adminRevisionHeading > div { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.adminRevisionHeading strong { font-size: .82rem; }
+.adminRevisionState { color: #aaa; font-size: .62rem; }
+.adminRevisionCurrent { padding: 4px 7px; color: #171100; background: var(--admin-brand); border-radius: 999px; font-size: .53rem; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
+.adminRevisionCard p { color: var(--admin-muted); font-size: .64rem; line-height: 1.45; }
+.adminRevisionCard .adminButton { width: 100%; min-height: 46px; }
+.adminRevisionEmpty { margin-top: 16px; padding: 18px 12px; color: var(--admin-muted); background: #0c0c0c; border: 1px dashed #363636; border-radius: 13px; text-align: center; font-size: .68rem; }
+.adminRestoreConfirm { margin-top: 12px; padding: 15px; display: grid; gap: 15px; background: #261717; border: 1px solid #693232; border-radius: 14px; }
+.adminRestoreConfirm strong { color: #fff; font-size: .8rem; }
+.adminRestoreConfirm p { margin-top: 6px; color: #c2adad; font-size: .67rem; line-height: 1.5; }
+.adminRestoreActions { display: grid; gap: 8px; }
+.adminRestoreActions .adminButton { width: 100%; min-height: 46px; }
+.adminRevisionHistory > .mockFeedback { margin-top: 12px; display: block; }
 
 .adminRuntimeSection { margin-bottom: 14px; }
 .adminRuntimeHeader { margin-bottom: 12px; display: grid; gap: 8px; }
@@ -572,6 +594,12 @@ body:has(.adminDrawerLayer[data-open="true"]) { overflow: hidden; }
   .adminConnectorButton { min-width: 0; }
   .adminConnectorDetail { position: sticky; top: 90px; }
   .adminCard { padding: 22px; }
+  .adminRevisionHistory { padding: 22px; }
+  .adminRevisionIntro { grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr); align-items: end; }
+  .adminRevisionIntro > p { justify-self: end; text-align: right; }
+  .adminRevisionList { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .adminRestoreConfirm { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .adminRestoreActions { grid-template-columns: auto auto; }
 }
 
 @media (min-width: 1040px) {
