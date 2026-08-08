@@ -59,8 +59,8 @@ export function HomeStoreCarousel({ products }: CarouselProps): ReactElement | n
   if (products.length === 0) return null;
   const activeProduct = products[activeIndex];
   const addActiveProduct = (): void => {
-    if (!isProductId(activeProduct.id)) return setAnnouncement("Este produto ainda não pode ser adicionado ao carrinho.");
-    addProduct(activeProduct.id, 1);
+    if (!isProductId(activeProduct.slug)) return setAnnouncement("Este produto ainda não pode ser adicionado ao carrinho.");
+    addProduct(activeProduct.slug, 1);
     setAnnouncement(`${activeProduct.name} adicionado. Abrindo o carrinho.`);
     window.location.assign("/carrinho");
   };

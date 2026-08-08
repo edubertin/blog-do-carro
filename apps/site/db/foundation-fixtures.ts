@@ -8,7 +8,7 @@ export const foundationRepositorySeed = {
   navigationItems: [],
   products: [
     {
-      id: "chaveiro-blog-do-carro",
+      id: "prd_chaveiro_blog_do_carro",
       variantId: "var_chaveiro_bdc_demo",
       slug: "chaveiro-blog-do-carro",
       sku: "BDC-CHV-DEMO",
@@ -25,7 +25,7 @@ export const foundationRepositorySeed = {
       inventoryMode: "untracked",
     },
     {
-      id: "miniatura-blog-do-carro",
+      id: "prd_miniatura_blog_do_carro",
       variantId: "var_miniatura_bdc_demo",
       slug: "miniatura-blog-do-carro",
       sku: "BDC-MIN-DEMO",
