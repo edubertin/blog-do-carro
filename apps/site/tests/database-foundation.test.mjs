@@ -81,6 +81,22 @@ class SQLiteD1Database {
   }
 }
 
+class RacingSQLiteD1Database extends SQLiteD1Database {
+  constructor(database, articleId) {
+    super(database);
+    this.articleId = articleId;
+    this.injected = false;
+  }
+
+  async batch(statements) {
+    if (!this.injected) {
+      this.injected = true;
+      this.database.prepare("UPDATE articles SET version = version + 1 WHERE id = ?").run(this.articleId);
+    }
+    return super.batch(statements);
+  }
+}
+
 async function typescriptModuleUrl(sourceUrl, cache = new Map()) {
   const cached = cache.get(sourceUrl.href);
   if (cached) return cached;
@@ -291,6 +307,79 @@ test("publishes a pending YouTube source into the public projection", async () =
   const projection = database.prepare("SELECT youtube_video_external_id, video_availability FROM published_article_projections WHERE article_id = ?").get(draft.id);
   assert.deepEqual({ ...projection }, { youtube_video_external_id: "pending12345", video_availability: "pending" });
   assert.equal(database.prepare("SELECT workflow_state FROM article_revisions WHERE id = ?").get(draft.revisionId).workflow_state, "published");
+});
+
+test("lists immutable revision history and restores a prior revision atomically", async () => {
+  const { createArticleDraft, listArticleRevisions, publishArticle, restoreArticleRevision, submitArticleForReview } = await loadAdminRepository();
+  const database = foundationDatabase();
+  const context = adminContext(database);
+  const first = await createArticleDraft(context, articleInput({ title: "Primeira versão editorial" }));
+  await submitArticleForReview(context, first.id);
+  await publishArticle(context, first.id);
+  const second = await createArticleDraft(context, articleInput({ articleId: first.id, title: "Segunda versão editorial" }));
+  await submitArticleForReview(context, second.id);
+  await publishArticle(context, second.id);
+
+  const history = await listArticleRevisions(context.database, first.id);
+  assert.deepEqual(history.map((revision) => revision.version), [2, 1]);
+  assert.equal(history[0].actor, "Administrador do portal");
+  const currentVersion = database.prepare("SELECT version FROM articles WHERE id = ?").get(first.id).version;
+  const restored = await restoreArticleRevision(context, first.id, first.revisionId, currentVersion);
+
+  assert.equal(restored.article.title, "Primeira versão editorial");
+  assert.equal(restored.article.version, currentVersion + 1);
+  assert.equal(database.prepare("SELECT title FROM published_article_projections WHERE article_id = ?").get(first.id).title, "Primeira versão editorial");
+  assert.equal(database.prepare("SELECT COUNT(*) AS count FROM article_revisions WHERE article_id = ?").get(first.id).count, 3);
+  assert.equal(database.prepare("SELECT COUNT(*) AS count FROM audit_events WHERE resource_id = ? AND action = 'article.revision.restored'").get(first.id).count, 1);
+});
+
+test("rejects stale or media-invalid restoration without changing the public projection", async () => {
+  const { createArticleDraft, publishArticle, restoreArticleRevision, submitArticleForReview } = await loadAdminRepository();
+  const database = foundationDatabase();
+  const context = adminContext(database);
+  const mediaId = "11111111-1111-4111-8111-111111111111";
+  database.exec(`INSERT INTO media_assets (id, object_key, content_type, byte_size, alt_text, lifecycle_state, created_at, updated_at, width, height, sha256)
+    VALUES ('${mediaId}', 'media/${mediaId}/original.webp', 'image/webp', 1200, 'Imagem da primeira versão', 'staged', 1, 1, 1200, 800, 'restore-test')`);
+  const first = await createArticleDraft(context, articleInput({
+    title: "Versão com imagem",
+    imageUrl: `/media/${mediaId}`,
+    body: { schemaVersion: 1, blocks: [{ id: "image-1", type: "image", assetId: mediaId, alt: "Imagem interna da primeira versão", alignment: "wide", width: 1200, height: 800 }] },
+  }));
+  await submitArticleForReview(context, first.id);
+  await publishArticle(context, first.id);
+  const second = await createArticleDraft(context, articleInput({ articleId: first.id, title: "Versão pública preservada" }));
+  await submitArticleForReview(context, second.id);
+  await publishArticle(context, second.id);
+  const version = database.prepare("SELECT version FROM articles WHERE id = ?").get(first.id).version;
+
+  await assert.rejects(restoreArticleRevision(context, first.id, first.revisionId, version - 1), (error) => error?.status === 409);
+  database.prepare("UPDATE media_assets SET lifecycle_state = 'archived' WHERE id = ?").run(mediaId);
+  await assert.rejects(restoreArticleRevision(context, first.id, first.revisionId, version), (error) => error?.status === 422);
+
+  assert.equal(database.prepare("SELECT title FROM published_article_projections WHERE article_id = ?").get(first.id).title, "Versão pública preservada");
+  assert.equal(database.prepare("SELECT version FROM articles WHERE id = ?").get(first.id).version, version);
+  assert.equal(database.prepare("SELECT COUNT(*) AS count FROM audit_events WHERE resource_id = ? AND action = 'article.revision.restored'").get(first.id).count, 0);
+});
+
+test("losing the restore lock leaves projection, history and audit untouched", async () => {
+  const { createArticleDraft, publishArticle, restoreArticleRevision, submitArticleForReview } = await loadAdminRepository();
+  const database = foundationDatabase();
+  const context = adminContext(database);
+  const first = await createArticleDraft(context, articleInput({ title: "Versão inicial da corrida" }));
+  await submitArticleForReview(context, first.id);
+  await publishArticle(context, first.id);
+  const second = await createArticleDraft(context, articleInput({ articleId: first.id, title: "Versão pública durante a corrida" }));
+  await submitArticleForReview(context, second.id);
+  await publishArticle(context, second.id);
+  const expectedVersion = database.prepare("SELECT version FROM articles WHERE id = ?").get(first.id).version;
+  const revisionCount = database.prepare("SELECT COUNT(*) AS count FROM article_revisions WHERE article_id = ?").get(first.id).count;
+  const racingContext = { ...context, database: new RacingSQLiteD1Database(database, first.id) };
+
+  await assert.rejects(restoreArticleRevision(racingContext, first.id, first.revisionId, expectedVersion), (error) => error?.status === 409);
+
+  assert.equal(database.prepare("SELECT title FROM published_article_projections WHERE article_id = ?").get(first.id).title, "Versão pública durante a corrida");
+  assert.equal(database.prepare("SELECT COUNT(*) AS count FROM article_revisions WHERE article_id = ?").get(first.id).count, revisionCount);
+  assert.equal(database.prepare("SELECT COUNT(*) AS count FROM audit_events WHERE resource_id = ? AND action = 'article.revision.restored'").get(first.id).count, 0);
 });
 
 test("declares logical Sites bindings without credentials or PII", () => {

@@ -35,7 +35,7 @@ O painel deve parecer uma central operacional do Blog do Carro, não um tema de 
 ## 4. Fora do escopo atual
 
 - OAuth, cookie administrativo paralelo ou cadastro de administrador mantido pela aplicação;
-- publicação pública de mídia R2 antes da homologação;
+- entrega pública de mídia fora da projeção publicada ou sem validação do ciclo D1/R2;
 - segredo, token, senha, chave de API ou credencial;
 - chamada para YouTube, Resend, Mercado Livre, Mercado Pago ou Meu Envio;
 - cobrança, webhook, etiqueta, rastreio ou pedido real;
@@ -72,7 +72,7 @@ flowchart LR
   Content --> Repository["Interface de repositório editorial"]
   Repository --> EditorialStore["D1 · fonte editorial única"]
   Commerce --> D1
-  Content --> R2["R2 · mídia staged até homologação"]
+  Content --> R2["R2 · staged privado e published público"]
   Control --> Adapters["Adapters server-side"]
   Secrets["Secrets do Sites"] -. "estado, nunca valor" .-> Control
   Secrets --> Adapters
@@ -82,7 +82,7 @@ flowchart LR
   Orders --> Commerce
 ```
 
-O painel publicado usa D1 e a fronteira de autorização do Sites. R2 continua limitado a mídia staged até homologação; adapters e serviços externos permanecem inativos.
+O painel publicado usa D1 e a fronteira de autorização do Sites. R2 recebe uploads privados e entrega somente assets promovidos por uma revisão publicada; adapters e serviços externos permanecem inativos.
 
 ## 6. Princípios de experiência
 
@@ -254,7 +254,7 @@ Domínios separados:
 - comércio: clientes, pedidos, itens, pagamentos, envios e webhooks;
 - analytics: eventos com retenção curta e agregados diários.
 
-O ADR 0001 define o CMS interno com D1 como fonte editorial única, isolada por interface de repositório e projeção publicada. D1 e CRUD editorial estão ativos; R2 recebe somente mídia staged até homologação do ciclo público.
+O ADR 0001 define o CMS interno com D1 como fonte editorial única, isolada por interface de repositório e projeção publicada. D1, CRUD editorial e o ciclo controlado de mídia R2 estão ativos; assets `staged` permanecem privados e a promoção ocorre somente na publicação.
 
 ## 17. Segurança operacional
 
@@ -301,10 +301,10 @@ Esses controles protegem o CMS publicado, mas não autorizam conectores, comérc
 
 ## 20. Sequência recomendada
 
-1. concluir a rodada editorial e registrar regressões;
-2. implementar o documento de blocos e a migration aditiva por revisão;
-3. homologar uploads R2, renderer compartilhado e rollback;
-4. ativar mídia pública gradualmente por flag;
-5. implementar analytics first-party agregado;
+1. concluir a homologação editorial real e registrar regressões;
+2. homologar histórico, restauração de revisões e reconciliação conservadora de mídia;
+3. manter upload e entrega pública sob flags independentes e observáveis;
+4. implementar analytics first-party agregado;
+5. preparar reconciliação de vídeos pendentes;
 6. homologar conectores um por vez;
 7. ativar comércio somente após produto, políticas e operação reais.

@@ -1,6 +1,6 @@
 # Spec — Fundação local do D1
 
-- Status: **D1 ativo em produção; R2 público ainda fail-closed**
+- Status: **D1 e ciclo controlado de mídia R2 ativos em produção**
 - Data: **2026-08-06**
 
 ## Objetivo
@@ -62,7 +62,7 @@ Esse registro não cria venda, estoque reservado ou pedido.
 - snapshots privados de checkout;
 - pedidos, pagamentos, envios e webhooks;
 - analytics de visitantes;
-- publicação pública de uploads e derivados R2, até homologação.
+- publicação de mídia sem vínculo com uma revisão publicada ou fora dos gates de autorização.
 
 O modelo conceitual dessas áreas permanece nas specs existentes. A migration comercial exige ADR de separação/PII, política de retenção e aprovação específica.
 
@@ -76,4 +76,4 @@ O modelo conceitual dessas áreas permanece nas specs existentes. A migration co
 6. ativar capacidades novas por flag server-side independente;
 7. manter a projeção publicada anterior durante falhas.
 
-Produção usa leitura pública projetada do D1 e escritas CMS autorizadas. O binding R2 existe somente para mídia staged autorizada até a homologação descrita em `structured-editor-media.md`; comércio real continua fora desta entrega. Consulte os ADRs 0007 e 0008.
+Produção usa leitura pública projetada do D1, escritas CMS autorizadas e R2 com upload privado `staged`. Somente assets vinculados a uma revisão publicada são promovidos e servidos publicamente; comércio real continua fora desta entrega. Consulte os ADRs 0007 e 0008.

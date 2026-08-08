@@ -110,6 +110,56 @@ test("editar artigo carrega a revisão pelo identificador", async ({ page }) => 
   await expect(page.locator('[name="youtubeUrl"]')).toHaveValue("jT0j_rCgbbc");
 });
 
+test("histórico editorial restaura uma versão anterior com confirmação", async ({ page }) => {
+  let restored = false;
+  const article = (version: number, revisionId: string) => ({ id: "article-history", revisionId, slug: "artigo-historico", title: restored ? "Título restaurado do histórico" : "Título atual do artigo", category: "Negociações", state: "draft", version, updatedAt: Date.now(), videoAvailability: "ready" });
+  const draft = () => ({ articleId: "article-history", title: restored ? "Título restaurado do histórico" : "Título atual do artigo", subtitle: "Subtítulo existente suficientemente completo.", slug: "artigo-historico", seoDescription: "Descrição existente suficientemente completa para os resultados de busca do portal.", categorySlug: "negociacoes", body: ["Conteúdo existente do artigo com tamanho suficiente para continuar a edição no painel administrativo sem perder dados."], opinion: "Opinião existente suficientemente completa.", imageUrl: "/images/articles/hero-negociacoes.png", imageAlt: "Imagem existente do artigo", youtubeVideoId: "jT0j_rCgbbc", readTimeMinutes: 5, faq: [{ question: "Pergunta existente no artigo?", answer: "Resposta existente no artigo." }] });
+
+  await page.route(/\/api\/admin\/articles\/article-history$/u, async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ article: article(restored ? 4 : 3, restored ? "revision-restored" : "revision-current"), draft: draft() }) });
+  });
+  await page.route("**/api/admin/articles/article-history/revisions", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ revisions: [
+      { id: restored ? "revision-restored" : "revision-current", version: restored ? 8 : 7, state: "draft", createdAt: Date.now(), actor: "Editor do Blog" },
+      { id: "revision-previous", version: 2, state: "published", createdAt: Date.now() - 60_000, actor: "Carlos Eduardo" },
+    ] }) });
+  });
+  await page.route("**/api/admin/articles/article-history/restore", async (route) => {
+    expect(route.request().postDataJSON()).toEqual({ revisionId: "revision-previous", expectedVersion: 3 });
+    restored = true;
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ article: article(4, "revision-restored"), draft: draft() }) });
+  });
+
+  await page.goto("/admin/artigos/novo?article=article-history", { waitUntil: "networkidle" });
+  await expect(page.getByRole("heading", { name: "Versões do artigo" })).toBeVisible();
+  await expect(page.getByText("Carlos Eduardo")).toBeVisible();
+  await expect(page.locator(".adminRevisionCard--current")).toContainText("Versão 7");
+  await expect(page.locator(".adminRevisionCard--current").getByRole("button", { name: "Restaurar esta versão" })).toHaveCount(0);
+  const accessibility = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+  expect(accessibility.violations.filter(({ impact }) => impact === "critical" || impact === "serious")).toEqual([]);
+  await page.getByRole("button", { name: "Restaurar esta versão" }).click();
+  await expect(page.getByRole("alertdialog")).toContainText("substituirá imediatamente o conteúdo público atual");
+  await page.getByRole("button", { name: "Confirmar restauração" }).click();
+
+  await expect(page.getByRole("status")).toContainText("Versão 2 restaurada e publicada");
+  await expect(page.getByRole("textbox", { name: "Título", exact: true })).toHaveValue("Título restaurado do histórico");
+});
+
+test("histórico editorial permite cancelar sem restaurar", async ({ page }) => {
+  const article = { id: "article-cancel", revisionId: "revision-current", slug: "artigo-cancel", title: "Artigo para cancelar restauração", category: "Negociações", state: "draft", version: 2, updatedAt: Date.now(), videoAvailability: "ready" };
+  const draft = { articleId: article.id, title: article.title, subtitle: "Subtítulo existente suficientemente completo.", slug: article.slug, seoDescription: "Descrição existente suficientemente completa para os resultados de busca do portal.", categorySlug: "negociacoes", body: ["Conteúdo existente do artigo com tamanho suficiente para continuar a edição no painel administrativo sem perder dados."], opinion: "Opinião existente suficientemente completa.", imageUrl: "/images/articles/hero-negociacoes.png", imageAlt: "Imagem existente do artigo", youtubeVideoId: "jT0j_rCgbbc", readTimeMinutes: 5, faq: [{ question: "Pergunta existente no artigo?", answer: "Resposta existente no artigo." }] };
+  let restoreRequests = 0;
+  await page.route(/\/api\/admin\/articles\/article-cancel$/u, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ article, draft }) }));
+  await page.route("**/api/admin/articles/article-cancel/revisions", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ revisions: [{ id: "revision-previous", version: 1, state: "published", createdAt: Date.now(), actor: null }] }) }));
+  await page.route("**/api/admin/articles/article-cancel/restore", (route) => { restoreRequests += 1; return route.abort(); });
+
+  await page.goto("/admin/artigos/novo?article=article-cancel", { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Restaurar esta versão" }).click();
+  await page.getByRole("button", { name: "Cancelar" }).click();
+  await expect(page.getByRole("alertdialog")).toHaveCount(0);
+  expect(restoreRequests).toBe(0);
+});
+
 test("lista administrativa confirma e remove artigo sem exclusão física", async ({ page }) => {
   let receivedMethod = "";
   await page.route("**/api/admin/articles", async (route) => {

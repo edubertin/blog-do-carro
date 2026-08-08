@@ -34,6 +34,14 @@ export type AdminArticleSummary = Readonly<{
   videoAvailability: "pending" | "ready";
 }>;
 
+export type AdminArticleRevisionSummary = Readonly<{
+  id: string;
+  version: number;
+  state: ArticleRevisionState;
+  createdAt: number;
+  actor: string | null;
+}>;
+
 export type ProductDraftInput = Readonly<{
   name: string;
   slug: string;

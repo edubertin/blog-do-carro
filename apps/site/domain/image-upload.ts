@@ -18,8 +18,8 @@ function jpegOrientation(segment: Uint8Array): number {
   if (ascii(segment, 4, 6) !== "Exif\0\0") return 1;
   const tiff = 10;
   const little = ascii(segment, tiff, 2) === "II";
-  if (!little && ascii(segment, tiff, 2) !== "MM") throw new Error("Metadados JPEG invÃ¡lidos.");
-  if (uint16(segment, tiff + 2, little) !== 42) throw new Error("Metadados JPEG invÃ¡lidos.");
+  if (!little && ascii(segment, tiff, 2) !== "MM") throw new Error("Metadados JPEG inválidos.");
+  if (uint16(segment, tiff + 2, little) !== 42) throw new Error("Metadados JPEG inválidos.");
   const directory = tiff + uint32(segment, tiff + 4, little);
   const entries = uint16(segment, directory, little);
   for (let index = 0; index < entries; index += 1) {
@@ -43,7 +43,7 @@ function sanitizeJpeg(bytes: Uint8Array): SanitizedImage {
     const end = offset + length + 2;
     if (length < 2 || end > bytes.length) throw new Error("Imagem JPEG truncada.");
     const segment = bytes.slice(offset, end);
-    if (marker === 0xe1 && jpegOrientation(segment) !== 1) throw new Error("Gire a foto antes do envio para remover a orientaÃ§Ã£o EXIF.");
+    if (marker === 0xe1 && jpegOrientation(segment) !== 1) throw new Error("Gire a foto antes do envio para remover a orientação EXIF.");
     if ([0xc0, 0xc1, 0xc2].includes(marker)) { height = uint16(bytes, offset + 5); width = uint16(bytes, offset + 7); }
     if (!metadataMarkers.has(marker)) parts.push(segment);
     offset = end;
@@ -54,7 +54,7 @@ function sanitizeJpeg(bytes: Uint8Array): SanitizedImage {
 
 function sanitizePng(bytes: Uint8Array): SanitizedImage {
   const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-  if (!signature.every((value, index) => bytes[index] === value)) throw new Error("Imagem PNG invÃ¡lida.");
+  if (!signature.every((value, index) => bytes[index] === value)) throw new Error("Imagem PNG inválida.");
   const parts: Uint8Array[] = [bytes.slice(0, 8)];
   let offset = 8;
   let width = 0;
@@ -94,5 +94,5 @@ export function sanitizeImageUpload(bytes: Uint8Array): SanitizedImage {
   if (bytes[0] === 0xff && bytes[1] === 0xd8) return sanitizeJpeg(bytes);
   if (bytes[0] === 0x89 && bytes[1] === 0x50) return sanitizePng(bytes);
   if (ascii(bytes, 0, 4) === "RIFF") return inspectWebp(bytes);
-  throw new Error("Formato real da imagem nÃ£o permitido.");
+  throw new Error("Formato real da imagem não permitido.");
 }
