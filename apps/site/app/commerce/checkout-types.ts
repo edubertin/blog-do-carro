@@ -1,4 +1,4 @@
-import type { ShippingId } from "./catalog";
+import type { ProductId, ShippingId } from "./catalog";
 
 export type CheckoutStep = "identity" | "delivery" | "payment" | "review";
 
@@ -39,8 +39,13 @@ export const initialAddress: AddressDetails = {
 export type DemoOrder = Readonly<{
   version: 1;
   id: string;
-  quantity: number;
+  items: readonly DemoOrderLine[];
   shippingId: ShippingId;
   createdAt: string;
   status: "simulation_complete";
+}>;
+
+export type DemoOrderLine = Readonly<{
+  productId: ProductId;
+  quantity: number;
 }>;

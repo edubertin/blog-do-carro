@@ -19,6 +19,7 @@ export type RuntimeEnvironment = Readonly<Record<string, unknown>>;
 const environmentKeyPattern = /^[A-Z][A-Z0-9_]*$/u;
 const foundationKeys = [
   "ADMIN_OWNER_USER_IDS",
+  "ADMIN_OWNER_EMAIL_ALLOWLIST",
   "ADMIN_EMAIL_BOOTSTRAP_ENABLED",
   "ADMIN_SUBJECT_HMAC_KEY",
   "CMS_WRITE_ENABLED",

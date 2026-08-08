@@ -346,6 +346,26 @@ test("supports the temporary normalized owner email bootstrap without exposing i
   assert.equal(access.identity.displayName, "Administrador");
 });
 
+test("requires the explicit email bootstrap flag for a second owner", async () => {
+  const { resolveAdminAccess } = await loadAdminAuthCore();
+  const headers = new Headers({
+    "oai-authenticated-user-id": "second-owner-subject",
+    "oai-authenticated-user-email": " second.owner@example.com ",
+  });
+  const bootstrap = {
+    userIds: JSON.stringify(["existing-owner-subject"]),
+    emailAllowlist: JSON.stringify(["second.owner@example.com"]),
+  };
+
+  assert.equal(resolveAdminAccess(headers, "blogdocarro.com", bootstrap).kind, "denied");
+  const allowed = resolveAdminAccess(headers, "blogdocarro.com", {
+    ...bootstrap,
+    emailBootstrapEnabled: true,
+  });
+  assert.equal(allowed.kind, "allowed");
+  assert.equal(allowed.identity.actorId, "second-owner-subject");
+});
+
 test("supports default email bootstrap when owner ID allowlist is absent", async () => {
   const { resolveAdminAccess } = await loadAdminAuthCore();
   const identity = new Headers({ "oai-authenticated-user-id": "owner-alpha" });
