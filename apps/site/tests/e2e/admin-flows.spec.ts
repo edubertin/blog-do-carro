@@ -50,6 +50,34 @@ test("editor permite remover e substituir a imagem antes de salvar", async ({ pa
   await expect(removeButton).toBeEnabled();
 });
 
+test("editor insere imagem interna sem depender de diálogo do navegador", async ({ page }) => {
+  let attempts = 0;
+  await page.route("**/api/admin/media", (route) => {
+    attempts += 1;
+    return attempts === 1
+      ? route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "Armazenamento temporariamente indisponível." }) })
+      : route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ asset: { id: "inline-asset", url: "/media/inline-asset", altText: "Moto preta estacionada em uma garagem", width: 560, height: 350 } }) });
+  });
+  await page.route("**/api/admin/media/inline-asset", (route) => route.fulfill({ status: 200, contentType: "image/png", body: Buffer.from("imagem") }));
+  await page.goto("/admin/artigos/novo", { waitUntil: "networkidle" });
+
+  await page.getByRole("button", { name: "+ Imagem" }).click();
+  const form = page.getByRole("group", { name: "Adicionar imagem interna" });
+  await expect(form).toBeVisible();
+  const fileInput = form.locator('input[type="file"]');
+  await expect(fileInput).toBeDisabled();
+  await form.getByRole("textbox", { name: "Descrição acessível" }).fill("Moto preta estacionada em uma garagem");
+  await expect(fileInput).toBeEnabled();
+  await fileInput.focus();
+  await expect(fileInput).toBeFocused();
+  await fileInput.setInputFiles({ name: "moto.png", mimeType: "image/png", buffer: Buffer.from("imagem") });
+  await expect(page.getByRole("alert")).toContainText("Armazenamento temporariamente indisponível.");
+  await fileInput.setInputFiles({ name: "moto.png", mimeType: "image/png", buffer: Buffer.from("imagem") });
+
+  await expect(page.getByRole("img", { name: "Moto preta estacionada em uma garagem" })).toBeVisible();
+  await expect(form).toHaveCount(0);
+});
+
 test("novo artigo abre vazio e sem checklist lateral", async ({ page }) => {
   await page.goto("/admin/artigos/novo", { waitUntil: "networkidle" });
 
