@@ -42,6 +42,7 @@ export const databaseTables = [
   { name: "inventory_movements", domain: "catalog", classification: "operational", activation: "commerce" },
   { name: "store_settings", domain: "catalog", classification: "operational", activation: "foundation" },
   { name: "media_assets", domain: "editorial", classification: "operational", activation: "editorial" },
+  { name: "article_revision_media", domain: "editorial", classification: "operational", activation: "editorial" },
   { name: "admin_principals", domain: "control", classification: "security_metadata", activation: "editorial" },
   { name: "admin_role_assignments", domain: "control", classification: "security_metadata", activation: "editorial" },
   { name: "connector_configurations", domain: "control", classification: "security_metadata", activation: "foundation" },
@@ -63,8 +64,8 @@ export const deferredCommerceTables = [
 ] as const;
 
 export const databaseSchema = {
-  version: 2,
-  migration: "0002_cms_media.sql",
+  version: 5,
+  migration: "0005_storefront_refresh.sql",
   seed: "0001_foundation_seed.sql",
   bindingsDeclared: true,
   publicReadsEnabledByDefault: false,

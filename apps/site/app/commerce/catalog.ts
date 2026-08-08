@@ -2,8 +2,15 @@ export const productIds = ["chaveiro-blog-do-carro", "miniatura-blog-do-carro"] 
 
 export type ProductId = (typeof productIds)[number];
 
+export const purchasableProductIds = ["chaveiro-blog-do-carro"] as const;
+export type PurchasableProductId = (typeof purchasableProductIds)[number];
+
 export function isProductId(value: unknown): value is ProductId {
   return typeof value === "string" && productIds.some((id) => id === value);
+}
+
+export function isPurchasableProductId(value: unknown): value is PurchasableProductId {
+  return typeof value === "string" && purchasableProductIds.some((id) => id === value);
 }
 
 export type ShippingId = "economico" | "expresso";

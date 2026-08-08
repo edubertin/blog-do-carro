@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactElement, ReactNode } from "react";
 import { createCartItem, parseCartSnapshot } from "./cart-types";
 import type { CartItem, CartSnapshot } from "./cart-types";
-import type { ProductId } from "./catalog";
+import type { PurchasableProductId } from "./catalog";
 
 const storageKey = "blog-do-carro-cart-v2";
 const legacyStorageKey = "blog-do-carro-cart-v1";
@@ -13,9 +13,9 @@ type CartContextValue = Readonly<{
   items: readonly CartItem[];
   itemCount: number;
   ready: boolean;
-  addProduct: (productId: ProductId, quantity: number) => void;
-  setQuantity: (productId: ProductId, quantity: number) => void;
-  removeProduct: (productId: ProductId) => void;
+  addProduct: (productId: PurchasableProductId, quantity: number) => void;
+  setQuantity: (productId: PurchasableProductId, quantity: number) => void;
+  removeProduct: (productId: PurchasableProductId) => void;
   clearCart: () => void;
 }>;
 
@@ -63,12 +63,12 @@ export function useCart(): CartContextValue {
   return context;
 }
 
-function addQuantity(items: readonly CartItem[], id: ProductId, quantity: number, maximum: number): CartItem[] {
+function addQuantity(items: readonly CartItem[], id: PurchasableProductId, quantity: number, maximum: number): CartItem[] {
   const current = items.find((item) => item.productId === id)?.quantity ?? 0;
   return upsertItem(items, createCartItem(id, current + quantity, maximum));
 }
 
-function changeQuantity(items: readonly CartItem[], id: ProductId, quantity: number, maximum: number): CartItem[] {
+function changeQuantity(items: readonly CartItem[], id: PurchasableProductId, quantity: number, maximum: number): CartItem[] {
   return upsertItem(items, createCartItem(id, quantity, maximum));
 }
 

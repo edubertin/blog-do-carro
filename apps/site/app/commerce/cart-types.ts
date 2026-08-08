@@ -1,11 +1,11 @@
-import { isProductId } from "./catalog";
-import type { ProductId } from "./catalog";
+import { isPurchasableProductId } from "./catalog";
+import type { PurchasableProductId } from "./catalog";
 
 const legacyProductId = "chaveiro-presente";
-const migratedProductId: ProductId = "chaveiro-blog-do-carro";
+const migratedProductId: PurchasableProductId = "chaveiro-blog-do-carro";
 
 export type CartItem = Readonly<{
-  productId: ProductId;
+  productId: PurchasableProductId;
   quantity: number;
 }>;
 
@@ -19,7 +19,7 @@ export function clampQuantity(quantity: number, maximum: number): number {
   return Math.max(1, Math.min(safeMaximum, Math.trunc(quantity)));
 }
 
-export function createCartItem(productId: ProductId, quantity: number, maximum: number): CartItem {
+export function createCartItem(productId: PurchasableProductId, quantity: number, maximum: number): CartItem {
   return { productId, quantity: clampQuantity(quantity, maximum) };
 }
 
@@ -48,9 +48,9 @@ function normalizeItem(value: unknown, maximum: number): CartItem | null {
   return productId ? createCartItem(productId, value.quantity, maximum) : null;
 }
 
-function normalizeProductId(value: unknown): ProductId | null {
+function normalizeProductId(value: unknown): PurchasableProductId | null {
   if (value === legacyProductId) return migratedProductId;
-  return isProductId(value) ? value : null;
+  return isPurchasableProductId(value) ? value : null;
 }
 
 function isCartItem(item: CartItem | null): item is CartItem {

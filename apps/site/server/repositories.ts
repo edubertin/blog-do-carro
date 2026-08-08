@@ -18,7 +18,6 @@ import { getRuntimeDatabase, isPublicD1ReadEnabled } from "./runtime-bindings";
 const navigationItems = [
   { label: "Início", href: "/" },
   { label: "Artigos", href: "/#ultimos" },
-  { label: "Categorias", href: "/#categorias" },
   { label: "Loja", href: "/loja" },
   { label: "Sobre", href: "/sobre" },
   { label: "Contato", href: "/contato" },

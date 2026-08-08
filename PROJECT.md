@@ -4,23 +4,24 @@
 
 - Product: Blog do Carro.
 - Repository: `Edubertin/blog-do-carro`.
-- Status: protótipo funcional em repositório privado, com projeto Sites provisionado para homologação protegida.
+- Status: portal público em produção pelo Sites, com CMS editorial protegido e catálogo demonstrativo.
 - Audience: público brasileiro interessado em compra, venda e negociação de veículos; 87% de uso esperado em smartphones.
 - Business goal: transformar os vídeos do canal Deu Negócio em um portal editorial e, depois, em comunidade, loja e marketplace.
 
 ## Current State
 
-- Active phase: implementação local da Fase 1; bindings lógicos D1/R2 declarados com ativação fail-closed.
-- Production status: portal público no Sites; leitura D1, escritas CMS e uploads permanecem desligados no ambiente hospedado por flags server-side.
-- Release status: a implementação ainda não foi publicada; a versão pública anterior continua usando fixtures.
-- Open decisions: datas oficiais dos quatro vídeos, separação física do futuro D1 comercial/PII, política de mídia R2 e homologação dos conectores.
+- Active phase: homologação editorial em produção e preparação do editor de blocos com mídia própria.
+- Production status: portal público no Sites; leitura pública D1 e escritas CMS estão ativas, protegidas por autorização server-side e projeção publicada.
+- Media status: binding R2 e upload staged existem, mas a entrega pública de mídia continua fail-closed até a homologação do ciclo completo.
+- Commerce status: catálogo e checkout são demonstrativos, sem cobrança, pedido persistente ou envio. O chaveiro custa `R$ 9,90`; a miniatura permanece `coming_soon` e não pode entrar no carrinho.
+- Open decisions: datas oficiais dos quatro vídeos, separação física do futuro D1 comercial/PII e homologação de mídia R2 e conectores.
 
 ## Recorded Decisions
 
 - Domínio canônico definitivo: `https://blogdocarro.com`.
 - O CMS editorial será interno ao admin, com D1 como única fonte de verdade e uma interface de repositório entre domínio e persistência.
 - O portal público consumirá somente uma projeção publicada; rascunhos e revisões nunca serão lidos diretamente pelas rotas públicas.
-- R2 será o armazenamento futuro de mídia própria; a decisão não ativa D1, R2 ou uploads nesta fase.
+- R2 é o armazenamento aprovado para mídia própria; upload e publicação permanecem capacidades independentes e fail-closed.
 - A identidade administrativa usará Sites/ChatGPT Sign in with ChatGPT (SIWC), com bootstrap de owner exclusivamente server-side e fora do Git.
 - Identidade, sessão e autorização do admin permanecerão separadas da conta de cliente; permissões administrativas serão aplicadas por RBAC no servidor.
 - Pagamento futuro: Mercado Pago exclusivamente para Pix; integração real bloqueada por credenciais, webhooks, homologação e gates comerciais.
@@ -34,7 +35,7 @@
 
 - App: `apps/site`, App Router compatível via Vinext, React e TypeScript estrito.
 - Runtime: Vite e Cloudflare Worker empacotado para Sites.
-- Database/storage: D1/R2 declarados no Sites; migrações editoriais e mídia staged versionadas; ativação hospedada continua bloqueada por flags independentes.
+- Database/storage: D1 ativo para leitura pública projetada e escritas CMS; R2 provisionado para mídia staged, ainda sem publicação pública homologada.
 - Commerce: fluxo demonstrativo local, sem cobrança ou envio; Mercado Pago Pix é apenas o destino futuro aprovado.
 - Observability: fundação local com request ID e limite de erro; nenhum coletor externo conectado.
 
@@ -75,6 +76,7 @@
 - Contrato de observabilidade: `docs/OBSERVABILITY.md`.
 - Decisões arquiteturais: `docs/adr/`.
 - Fundação D1 local: `docs/specs/d1-foundation.md`.
+- Editor estruturado e mídia: `docs/specs/structured-editor-media.md`.
 
 ## Safety
 

@@ -14,6 +14,7 @@ import type {
   PublicFeaturedVideo,
   PublicSearchDocument,
 } from "../../domain/public-content";
+import { parseArticleContent } from "../../domain/article-content";
 
 const articleColumns = `
   article_id, revision_id, slug, category_name, category_slug, title, subtitle,
@@ -61,12 +62,8 @@ function parsedJson(value: string): unknown {
   }
 }
 
-function stringArray(value: string): readonly string[] {
-  const parsed = parsedJson(value);
-  if (!Array.isArray(parsed) || !parsed.every((item) => typeof item === "string")) {
-    throw new Error("Corpo editorial inválido na projeção D1.");
-  }
-  return parsed;
+function articleBody(value: string): PublicArticle["body"] {
+  return parseArticleContent(parsedJson(value));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -109,7 +106,7 @@ function publishedArticle(row: D1Row): PublicArticle {
     image: stringValue(row, "image_url"),
     imageAlt: stringValue(row, "image_alt"),
     videoId: nullableStringValue(row, "youtube_video_external_id"),
-    body: stringArray(stringValue(row, "body_json")),
+    body: articleBody(stringValue(row, "body_json")),
     opinion: stringValue(row, "opinion"),
     faq: faqArray(stringValue(row, "faq_json")),
   };

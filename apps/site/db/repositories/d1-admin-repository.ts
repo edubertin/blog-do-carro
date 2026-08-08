@@ -13,6 +13,7 @@ import type {
 import { conflictingResource, invalidInput, missingResource } from "../../server/admin-errors";
 import type { D1Database, D1PreparedStatement, D1Row } from "../d1";
 import type { AdminIdentity, AdminPermission } from "../../app/admin/admin-auth-core";
+import { articleText, parseArticleContent, referencedAssetIds } from "../../domain/article-content";
 
 export type AdminWriteContext = Readonly<{
   database: D1Database;
@@ -132,6 +133,31 @@ async function assertVideoAvailable(database: D1Database, sourceVideoId: string,
   if (owner && (!articleId || text(owner, "id") !== articleId)) throw conflictingResource("Esse vídeo já está vinculado a outro artigo.");
 }
 
+async function assertMediaAvailable(database: D1Database, input: ArticleDraftInput): Promise<void> {
+  const coverAssetId = coverMediaAssetId(input.imageUrl);
+  const assetIds = [...referencedAssetIds(input.body), ...(coverAssetId ? [coverAssetId] : [])];
+  for (const assetId of assetIds) {
+    const row = await database.prepare("SELECT id FROM media_assets WHERE id = ? AND lifecycle_state IN ('staged', 'published') LIMIT 1").bind(assetId).first();
+    if (!row) throw invalidInput("Uma imagem interna não está disponível na biblioteca.");
+  }
+}
+
+function coverMediaAssetId(imageUrl: string): string | null {
+  return imageUrl.match(/^\/media\/([0-9a-f-]{36})$/u)?.[1] ?? null;
+}
+
+function mediaStatements(database: D1Database, revisionId: string, input: ArticleDraftInput): readonly D1PreparedStatement[] {
+  const inlineStatements = input.body.blocks.flatMap((block, position) => {
+    if (block.type !== "image") return [];
+    return [database.prepare("INSERT INTO article_revision_media (revision_id, media_asset_id, usage, block_id, position, alt_text, caption) VALUES (?, ?, 'inline', ?, ?, ?, ?)")
+      .bind(revisionId, block.assetId, block.id, position, block.alt.trim(), block.caption?.trim() || null)];
+  });
+  const coverAssetId = coverMediaAssetId(input.imageUrl);
+  if (!coverAssetId) return inlineStatements;
+  return [database.prepare("INSERT INTO article_revision_media (revision_id, media_asset_id, usage, block_id, position, alt_text, caption) VALUES (?, ?, 'cover', 'cover', 0, ?, NULL)")
+    .bind(revisionId, coverAssetId, input.imageAlt.trim()), ...inlineStatements];
+}
+
 function revisedArticleStatements(
   context: AdminWriteContext,
   input: ArticleDraftInput,
@@ -155,14 +181,15 @@ export async function createArticleDraft(context: AdminWriteContext, input: Arti
   const category = await categoryId(context.database, input.categorySlug);
   const video = await videoId(context.database, input.youtubeVideoId);
   const existing = input.articleId ? await existingArticle(context.database, input.articleId) : null;
+  await assertMediaAvailable(context.database, input);
   await assertSlugAvailable(context.database, input.slug, input.articleId);
   await assertVideoAvailable(context.database, video, input.articleId);
   const ids = { article: existing ? text(existing, "id") : crypto.randomUUID(), revision: crypto.randomUUID(), category, video, principal };
   const version = existing ? integer(existing, "version") + 1 : 1;
   if (existing) {
-    await context.database.batch(revisedArticleStatements(context, input, ids, integer(existing, "revision_number") + 1));
+    await context.database.batch([...revisedArticleStatements(context, input, ids, integer(existing, "revision_number") + 1), ...mediaStatements(context.database, ids.revision, input)]);
   } else {
-    await context.database.batch(articleStatements(context, input, ids));
+    await context.database.batch([...articleStatements(context, input, ids), ...mediaStatements(context.database, ids.revision, input)]);
   }
   return {
     id: ids.article, revisionId: ids.revision, slug: input.slug, title: input.title,
@@ -170,10 +197,9 @@ export async function createArticleDraft(context: AdminWriteContext, input: Arti
   };
 }
 
-function stringArray(row: D1Row, key: string): readonly string[] {
+function articleBody(row: D1Row, key: string): ArticleDraftInput["body"] {
   const parsed: unknown = JSON.parse(text(row, key));
-  if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== "string")) throw new Error(`Campo D1 inválido: ${key}.`);
-  return parsed;
+  return parseArticleContent(parsed);
 }
 
 export async function getAdminArticle(database: D1Database, articleId: string): Promise<AdminArticleEditorRecord> {
@@ -184,7 +210,7 @@ export async function getAdminArticle(database: D1Database, articleId: string): 
   const faq = faqResult.results.map((item) => ({ question: text(item, "question"), answer: text(item, "answer") }));
   return {
     article: articleSummary(row),
-    draft: { articleId, title: text(row, "title"), subtitle: text(row, "subtitle"), slug: text(row, "slug"), seoDescription: text(row, "seo_description"), categorySlug: text(row, "category_slug"), body: stringArray(row, "body_json"), opinion: text(row, "opinion"), imageUrl: text(row, "image_url"), imageAlt: text(row, "image_alt"), youtubeVideoId: text(row, "youtube_video_id"), readTimeMinutes: integer(row, "read_time_minutes"), faq },
+    draft: { articleId, title: text(row, "title"), subtitle: text(row, "subtitle"), slug: text(row, "slug"), seoDescription: text(row, "seo_description"), categorySlug: text(row, "category_slug"), body: articleBody(row, "body_json"), opinion: text(row, "opinion"), imageUrl: text(row, "image_url"), imageAlt: text(row, "image_alt"), youtubeVideoId: text(row, "youtube_video_id"), readTimeMinutes: integer(row, "read_time_minutes"), faq },
   };
 }
 
@@ -227,10 +253,17 @@ async function publicationFaq(database: D1Database, revisionId: string): Promise
 
 function projectionStatement(context: AdminWriteContext, source: D1Row, faqJson: string, now: number): D1PreparedStatement {
   const bodyJson = text(source, "body_json");
-  const searchable = normalizedSearchText([text(source, "title"), text(source, "subtitle"), text(source, "category_name"), bodyJson].join(" "));
+  const searchable = normalizedSearchText([text(source, "title"), text(source, "subtitle"), text(source, "category_name"), articleText(articleBody(source, "body_json"))].join(" "));
   const video = source.youtube_video_external_id === null ? null : text(source, "youtube_video_external_id");
   const sql = "INSERT INTO published_article_projections (article_id, revision_id, slug, category_name, category_slug, title, subtitle, seo_description, search_text, image_url, image_alt, youtube_video_external_id, date_label, body_json, opinion, faq_json, read_time_minutes, published_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PUBLICADO', ?, ?, ?, ?, ?, ?) ON CONFLICT(article_id) DO UPDATE SET revision_id = excluded.revision_id, slug = excluded.slug, category_name = excluded.category_name, category_slug = excluded.category_slug, title = excluded.title, subtitle = excluded.subtitle, seo_description = excluded.seo_description, search_text = excluded.search_text, image_url = excluded.image_url, image_alt = excluded.image_alt, youtube_video_external_id = excluded.youtube_video_external_id, date_label = excluded.date_label, body_json = excluded.body_json, opinion = excluded.opinion, faq_json = excluded.faq_json, read_time_minutes = excluded.read_time_minutes, published_at = COALESCE(published_article_projections.published_at, excluded.published_at), updated_at = excluded.updated_at";
   return context.database.prepare(sql).bind(text(source, "id"), text(source, "revision_id"), text(source, "slug"), text(source, "category_name"), text(source, "category_slug"), text(source, "title"), text(source, "subtitle"), text(source, "seo_description"), searchable, text(source, "image_url"), text(source, "image_alt"), video, bodyJson, text(source, "opinion"), faqJson, integer(source, "read_time_minutes"), now, now);
+}
+
+async function assertRevisionMediaPublishable(database: D1Database, revisionId: string): Promise<void> {
+  const result = await database.prepare("SELECT m.id, m.lifecycle_state FROM article_revision_media arm JOIN media_assets m ON m.id = arm.media_asset_id WHERE arm.revision_id = ?").bind(revisionId).all();
+  if (result.results.some((row) => row.lifecycle_state !== "staged" && row.lifecycle_state !== "published")) {
+    throw invalidInput("Uma imagem interna foi arquivada e precisa ser substituída.");
+  }
 }
 
 export async function publishArticle(context: AdminWriteContext, articleId: string): Promise<void> {
@@ -239,6 +272,7 @@ export async function publishArticle(context: AdminWriteContext, articleId: stri
   if (text(source, "workflow_state") !== "review") throw conflictingResource("Envie o rascunho para revisão antes de publicar.");
   if (text(source, "image_url").startsWith("/api/admin/")) throw invalidInput("Mídia em estágio privado não pode ser publicada.");
   const revisionId = text(source, "revision_id");
+  await assertRevisionMediaPublishable(context.database, revisionId);
   const faqJson = await publicationFaq(context.database, revisionId);
   const now = Date.now();
   await context.database.batch([
@@ -247,6 +281,7 @@ export async function publishArticle(context: AdminWriteContext, articleId: stri
     projectionStatement(context, source, faqJson, now),
     context.database.prepare("DELETE FROM published_article_categories WHERE article_id = ?").bind(articleId),
     context.database.prepare("INSERT INTO published_article_categories (article_id, category_id, published_at) VALUES (?, ?, ?)").bind(articleId, text(source, "category_id"), now),
+    context.database.prepare("UPDATE media_assets SET lifecycle_state = 'published', updated_at = ? WHERE id IN (SELECT media_asset_id FROM article_revision_media WHERE revision_id = ?) AND lifecycle_state = 'staged'").bind(now, revisionId),
     auditStatement(context, principal, "content.publish", "article.published", "article", articleId),
   ]);
 }
@@ -333,7 +368,7 @@ export async function saveMediaAsset(context: AdminWriteContext, asset: MediaAss
   const principal = await ensurePrincipal(context);
   const now = Date.now();
   await context.database.batch([
-    context.database.prepare("INSERT INTO media_assets (id, object_key, content_type, byte_size, alt_text, lifecycle_state, created_by_principal_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'staged', ?, ?, ?)").bind(asset.id, asset.objectKey, asset.contentType, asset.byteSize, asset.altText, principal, now, now),
+    context.database.prepare("INSERT INTO media_assets (id, object_key, content_type, byte_size, alt_text, lifecycle_state, created_by_principal_id, created_at, updated_at, width, height, sha256) VALUES (?, ?, ?, ?, ?, 'staged', ?, ?, ?, ?, ?, ?)").bind(asset.id, asset.objectKey, asset.contentType, asset.byteSize, asset.altText, principal, now, now, asset.width, asset.height, asset.sha256),
     auditStatement(context, principal, "content.write", "media.staged", "media", asset.id),
   ]);
 }

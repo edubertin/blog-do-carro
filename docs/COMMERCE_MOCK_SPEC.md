@@ -2,19 +2,21 @@
 
 ## Objetivo
 
-Validar a experiência completa de compra do chaveiro e da miniatura Blog do Carro antes de conectar autenticação, pagamento, logística ou persistência de pedidos.
+Validar a experiência demonstrativa do chaveiro antes de conectar autenticação, pagamento, logística ou persistência de pedidos. A miniatura permanece apenas como antecipação `coming_soon`.
 
 O fluxo é deliberadamente demonstrativo. Nenhuma tela pode criar cobrança, etiqueta, rastreio, pedido persistente ou envio.
 
 ## Fluxo implementado
 
-1. Produto com preço ilustrativo e quantidade de uma a cinco unidades.
+1. Chaveiro disponível no fluxo demo por `R$ 9,90`, com quantidade de uma a cinco unidades.
 2. Carrinho com alteração de quantidade, remoção e subtotal.
 3. Identificação como convidado.
 4. Endereço manual ou preenchimento fictício e duas opções locais de frete.
 5. Pix demonstrativo sem QR Code, código copiável ou CTA de pagamento.
 6. Revisão obrigatória antes da conclusão.
 7. Confirmação com referência `DEMO-CHP-*`, sem linguagem de pedido pago.
+
+A miniatura aparece na vitrine com o rótulo `Em breve`, sem preço, botão de compra ou inclusão no carrinho. Essa regra é validada no domínio, não apenas escondida por CSS.
 
 ## Padrões reaproveitados da Plimcor
 

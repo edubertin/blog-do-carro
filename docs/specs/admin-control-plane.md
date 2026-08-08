@@ -21,24 +21,21 @@ Uma pessoa sem conhecimento técnico deve conseguir entender:
 
 O painel deve parecer uma central operacional do Blog do Carro, não um tema de dashboard genérico.
 
-## 3. Escopo do mock atual
+## 3. Estado atual
 
 - rotas administrativas completas e responsivas;
-- dados sintéticos e identificadores `DEMO-*`;
-- formulários editáveis somente em memória React;
-- ordenação local da home;
-- ativação local de itens de menu;
-- criação e arquivamento local de produtos fictícios;
-- seleção e preflight simulado de conectores;
-- visualização de papéis e audit log fictícios;
+- CMS com leitura e escrita D1 para artigos, catálogo, home e menu;
+- projeção pública separada das revisões administrativas;
+- catálogo demonstrativo com chaveiro a `R$ 9,90` e miniatura `coming_soon`;
+- conectores externos, pedidos, pagamento e frete permanecem simulados ou desligados;
 - fronteira de autorização server-side com SIWC, owner e negação por padrão;
 - `noindex`, `nofollow`, `private, no-store` e bloqueio de frame;
 - identidade sintética somente por HTTP em loopback; host publicado exige SIWC e owner configurado.
 
-## 4. Fora do escopo do mock
+## 4. Fora do escopo atual
 
 - OAuth, cookie administrativo paralelo ou cadastro de administrador mantido pela aplicação;
-- D1, R2, upload, CMS ou persistência;
+- publicação pública de mídia R2 antes da homologação;
 - segredo, token, senha, chave de API ou credencial;
 - chamada para YouTube, Resend, Mercado Livre, Mercado Pago ou Meu Envio;
 - cobrança, webhook, etiqueta, rastreio ou pedido real;
@@ -47,16 +44,16 @@ O painel deve parecer uma central operacional do Blog do Carro, não um tema de 
 
 ## 5. Mapa de rotas
 
-| Rota | Missão principal | Fonte no mock |
+| Rota | Missão principal | Fonte atual |
 | --- | --- | --- |
-| `/admin` | resumo operacional e próximos gates | fixtures tipadas |
+| `/admin` | resumo operacional e próximos gates | D1 e estados server-side |
 | `/admin/analytics` | leitura de aquisição, conteúdo, dispositivo e loja | números ilustrativos |
-| `/admin/artigos` | fila editorial e estados | fixtures editoriais separadas |
-| `/admin/artigos/novo` | criar artigo completo a partir de vídeo | estado da página |
-| `/admin/home` | ordenar seções e revisar o hero | estado React |
-| `/admin/menu` | exibir ou ocultar itens | estado React |
-| `/admin/loja/produtos` | adicionar e arquivar itens | estado React |
-| `/admin/loja/configuracoes` | identidade e regras públicas da loja | formulário sem persistência |
+| `/admin/artigos` | fila editorial e estados | D1 editorial |
+| `/admin/artigos/novo` | criar artigo completo a partir de vídeo | revisão D1 |
+| `/admin/home` | ordenar seções e revisar o hero | curadoria D1 |
+| `/admin/menu` | exibir ou ocultar itens | curadoria D1 |
+| `/admin/loja/produtos` | adicionar e arquivar itens | catálogo D1 demonstrativo |
+| `/admin/loja/configuracoes` | identidade e regras públicas da loja | configuração D1 demonstrativa |
 | `/admin/pedidos` | fila e detalhe sintético | fixtures `DEMO-*` |
 | `/admin/integracoes` | requisitos, estados, rotas e gates dos conectores | contratos tipados |
 | `/admin/seguranca` | papéis, fronteira e auditoria | fixtures de segurança |
@@ -75,7 +72,7 @@ flowchart LR
   Content --> Repository["Interface de repositório editorial"]
   Repository --> EditorialStore["D1 · fonte editorial única"]
   Commerce --> D1
-  Content --> R2["R2 futuro para mídia"]
+  Content --> R2["R2 · mídia staged até homologação"]
   Control --> Adapters["Adapters server-side"]
   Secrets["Secrets do Sites"] -. "estado, nunca valor" .-> Control
   Secrets --> Adapters
@@ -85,7 +82,7 @@ flowchart LR
   Orders --> Commerce
 ```
 
-O mock atual representa a superfície visual e a primeira fronteira de `Boundary` e `Auth`. Bancos, storage, audit log persistente, adapters e serviços externos permanecem ausentes e inativos. A confiança nos headers de identidade ainda precisa ser comprovada em um preview real do Sites antes de publicar ou ativar dados.
+O painel publicado usa D1 e a fronteira de autorização do Sites. R2 continua limitado a mídia staged até homologação; adapters e serviços externos permanecem inativos.
 
 ## 6. Princípios de experiência
 
@@ -105,7 +102,7 @@ O editor real exige:
 - `title`, `subtitle`, `slug`, `seoDescription`;
 - imagem principal, dimensões, origem e texto alternativo;
 - categoria, autor, data, tempo de leitura e relacionados;
-- blocos estruturados do artigo;
+- documento versionado com blocos `paragraph | heading | image`;
 - bloco `Minha opinião`;
 - `youtubeVideoId` e metadados de origem;
 - FAQ estruturado;
@@ -114,6 +111,8 @@ O editor real exige:
 - histórico de versões e audit events.
 
 Regra estrutural: o domínio editorial acessa D1 por uma interface de repositório server-side. Rotas públicas consomem uma projeção somente de artigos publicados e nunca importam a coleção administrativa crua.
+
+O editor permite inserir imagens entre blocos, mas salva referências de mídia, texto alternativo e legenda — nunca HTML livre nem URLs administrativas. Consulte `structured-editor-media.md`.
 
 ## 8. Fluxo vídeo → artigo → home
 
@@ -184,14 +183,14 @@ Inserção e rotação pertencem ao mecanismo de secrets do Sites. D1 guarda som
 - identidade administrativa gerenciada por Sites/ChatGPT SIWC, sem senha própria no D1;
 - proteção de `/admin/*` e `/api/admin/*` antes do handler público;
 - leitura server-side de `oai-authenticated-user-id` como identificador estável;
-- e-mail aceito somente com `ADMIN_EMAIL_BOOTSTRAP_ENABLED=1`, para bootstrap controlado, e nunca como autorização no navegador;
+- bootstrap temporário por e-mail desligado; IDs estáveis provisionados fora do Git são a base da autorização;
 - sessão SIWC gerenciada pelo Sites, sem cookie administrativo paralelo nesta fase;
 - negação por padrão;
 - primeiro owner provisionado exclusivamente no servidor, fora do código e do Git;
 - remover usuário ou papel revoga o acesso na requisição seguinte;
 - cada API, Server Action e repositório repete a autorização necessária.
 - mutações administrativas exigem `Origin` de mesma origem na fronteira do Worker;
-- o bootstrap por e-mail é desligado depois que os IDs estáveis dos owners forem capturados;
+- nenhum ID ou e-mail administrativo é documentado ou versionado;
 - um preview publicado deve provar proteção contra headers de identidade forjados e acesso direto ao Worker antes da ativação de dados reais.
 
 A identidade do cliente nunca concede acesso ao admin e a identidade do admin nunca substitui a sessão do cliente.
@@ -255,9 +254,9 @@ Domínios separados:
 - comércio: clientes, pedidos, itens, pagamentos, envios e webhooks;
 - analytics: eventos com retenção curta e agregados diários.
 
-O ADR 0001 define o CMS interno com D1 como fonte editorial única, isolada por interface de repositório e por uma projeção publicada. R2 será usado futuramente para mídia própria. O mock não ativa D1, R2, uploads ou CRUD real.
+O ADR 0001 define o CMS interno com D1 como fonte editorial única, isolada por interface de repositório e projeção publicada. D1 e CRUD editorial estão ativos; R2 recebe somente mídia staged até homologação do ciclo público.
 
-## 17. Segurança do mock
+## 17. Segurança operacional
 
 - HTTP em loopback recebe identidade sintética apenas para desenvolvimento;
 - host publicado sem configuração falha fechado; identidade ausente, desconhecida ou sem permissão não acessa o admin;
@@ -268,23 +267,23 @@ O ADR 0001 define o CMS interno com D1 como fonte editorial única, isolada por 
 - nenhuma gravação em `localStorage` ou `sessionStorage`;
 - nenhuma chamada para host externo;
 - nenhuma credencial no formulário;
-- recarregar restaura todas as fixtures.
+- escritas passam por autorização e auditoria no servidor.
 
-Esses controles limitam o mock; não substituem o teste do dispatcher em preview real nem autorizam persistência, conectores ou dados reais.
+Esses controles protegem o CMS publicado, mas não autorizam conectores, comércio real ou entrega pública de mídia sem homologação própria.
 
-## 18. Critérios de aceite do mock
+## 18. Critérios de aceite da superfície administrativa
 
 - todas as rotas da matriz respondem em host local;
 - navegação pública não aparece dentro do admin;
 - desktop e mobile compartilham os mesmos destinos;
-- aviso de demonstração aparece em todas as telas;
-- editar, ordenar, ativar ou arquivar muda apenas estado React;
+- aviso de demonstração aparece nas áreas comerciais ainda simuladas;
+- editar, ordenar, ativar ou arquivar persiste somente nos domínios D1 aprovados;
 - integrações nunca solicitam valor secreto;
 - pedidos usam apenas `DEMO-*` e não leem dados do checkout;
 - ações informam claramente o efeito simulado;
 - admin não aparece no sitemap e é desautorizado no robots;
 - host publicado sem owner configurado falha fechado e mutação cross-origin é recusada;
-- reload restaura o estado original;
+- reload preserva alterações autorizadas do CMS;
 - lint, TypeScript, build, testes de renderização e QA de navegador passam.
 
 ## 19. Critérios de aceite da versão real
@@ -302,12 +301,10 @@ Esses controles limitam o mock; não substituem o teste do dispatcher em preview
 
 ## 20. Sequência recomendada
 
-1. validar o mock com responsáveis por editorial, operação e marca;
-2. detalhar os contratos de repositório, schema e migrations do CMS interno;
-3. implementar Sites/ChatGPT SIWC, proteção server-side, bootstrap de owner e RBAC com todas as capacidades desligadas;
-4. criar D1, migrations e audit log em preview apenas para os domínios aprovados;
-5. implementar o CRUD no D1 pela interface de repositório e manter a projeção pública;
-6. ativar uploads R2 com política e validação;
-7. implementar analytics first-party agregado;
-8. homologar conectores um por vez;
-9. ativar comércio somente após produto, políticas e operação reais.
+1. concluir a rodada editorial e registrar regressões;
+2. implementar o documento de blocos e a migration aditiva por revisão;
+3. homologar uploads R2, renderer compartilhado e rollback;
+4. ativar mídia pública gradualmente por flag;
+5. implementar analytics first-party agregado;
+6. homologar conectores um por vez;
+7. ativar comércio somente após produto, políticas e operação reais.

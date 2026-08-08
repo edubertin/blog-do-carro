@@ -26,6 +26,12 @@ export type CatalogProduct = Readonly<{
   inventoryMode: "untracked" | "tracked";
 }>;
 
+export type ProductAvailability = "available" | "coming_soon";
+
+export function productAvailability(product: CatalogProduct): ProductAvailability {
+  return product.status === "active" ? "available" : "coming_soon";
+}
+
 export interface PublishedContentRepository {
   listPublishedArticles(limit: number): Promise<readonly PublicArticle[]>;
   listPopularArticles(limit: number): Promise<readonly PublicArticle[]>;

@@ -469,6 +469,12 @@ body:has(.adminDrawerLayer[data-open="true"]) { overflow: hidden; }
 .adminFormActions { padding-top: 18px; display: flex; flex-wrap: wrap; gap: 10px; border-top: 1px solid var(--admin-line); }
 .adminMediaActions { margin-top: 10px; display: flex; justify-content: flex-end; }
 .adminMediaActions .adminButton { min-height: 42px; }
+.adminStructuredEditor { display: grid; gap: 14px; }
+.adminStructuredBlock { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--admin-line); border-radius: 14px; background: rgba(255, 255, 255, 0.025); }
+.adminStructuredBlock textarea { min-height: 130px; }
+.adminStructuredBlock img { width: 100%; height: auto; border-radius: 10px; }
+.adminInsertBlock { display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--admin-line); padding-top: 10px; }
+.adminInsertBlock button, .adminStructuredBlock .adminMediaActions button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--admin-line); border-radius: 999px; color: inherit; background: transparent; }
 .adminPublishConfirmation { min-height: 48px; display: flex; align-items: center; gap: 10px; color: #c8c8c2; font-size: .82rem; font-weight: 700; }
 .adminPublishConfirmation input { width: 22px; height: 22px; flex: 0 0 auto; }
 
