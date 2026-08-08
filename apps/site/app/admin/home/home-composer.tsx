@@ -12,7 +12,7 @@ const initialSections: readonly HomeSection[] = [
   { id: "home_hero", name: "Vídeo em destaque", detail: "Carrossel com os quatro vídeos mais recentes", status: "Ativo" },
   { id: "home_latest", name: "Agora no Blog", detail: "Três artigos com maior prioridade editorial", status: "Curadoria" },
   { id: "home_categories", name: "Categorias", detail: "Navegação agrupada por missão do leitor", status: "Curadoria" },
-  { id: "home_store", name: "Loja da comunidade", detail: "Chaveiro Presente · Edição 01", status: "Demo" },
+  { id: "home_store", name: "Loja da comunidade", detail: "Chaveiro e miniatura 3D", status: "Demo" },
   { id: "home_popular", name: "Leituras em destaque", detail: "Ranking editorial sem analytics real", status: "Curadoria" },
 ];
 

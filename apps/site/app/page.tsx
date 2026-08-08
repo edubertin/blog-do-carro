@@ -1,7 +1,7 @@
 import { HomePage } from "./components/home-page";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { getCatalogProduct, getHomeProjection } from "@/server/public-content-service";
+import { getHomeProjection, listCatalogProducts } from "@/server/public-content-service";
 
 export const metadata: Metadata = {
   title: "Blog do Carro — Negócios sobre rodas",
@@ -10,9 +10,9 @@ export const metadata: Metadata = {
 };
 
 export default async function Home(): Promise<ReactElement> {
-  const [projection, product] = await Promise.all([
+  const [projection, products] = await Promise.all([
     getHomeProjection(),
-    getCatalogProduct("chaveiro-presente"),
+    listCatalogProducts(),
   ]);
-  return <HomePage projection={projection} product={product} />;
+  return <HomePage projection={projection} products={products.slice(0, 2)} />;
 }

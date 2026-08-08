@@ -17,7 +17,7 @@ export async function POST(request: Request): Promise<Response> {
   if (isAdminResponse(context)) return context;
   try {
     const input = parseArticleDraftInput(await request.json());
-    return Response.json({ article: await createArticleDraft(context, input) }, { status: 201 });
+    return Response.json({ article: await createArticleDraft(context, input) }, { status: input.articleId ? 200 : 201 });
   } catch (error) {
     return adminFailure(error, "articles.create");
   }

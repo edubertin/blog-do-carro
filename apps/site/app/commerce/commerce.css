@@ -349,6 +349,17 @@ body:has(.commercePage) .siteFooter {
   text-align: center;
 }
 
+.cartPrototypeNotice {
+  margin-top: 18px;
+  padding: 14px;
+  color: #d4bb70;
+  background: #251f10;
+  border: 1px solid #514217;
+  border-radius: var(--radius-sm);
+  font-size: .72rem;
+  line-height: 1.5;
+}
+
 .commerceLoading {
   min-height: 55svh;
   display: grid;

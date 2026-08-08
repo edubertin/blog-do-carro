@@ -6,7 +6,7 @@ import "@fontsource/archivo/700.css";
 import "@fontsource/source-serif-4/600.css";
 import type { ReactElement } from "react";
 import { RootChrome } from "./components/root-chrome";
-import { getCatalogProduct, getNavigationProjection } from "@/server/public-content-service";
+import { getNavigationProjection, listCatalogProducts } from "@/server/public-content-service";
 import "./globals.css";
 import "./commerce/commerce.css";
 
@@ -36,14 +36,15 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>): Promise<ReactElement> {
-  const [navigation, product] = await Promise.all([
+  const [navigation, products] = await Promise.all([
     getNavigationProjection(),
-    getCatalogProduct("chaveiro-presente"),
+    listCatalogProducts(),
   ]);
+  const maximumCartQuantity = Math.max(1, ...products.map((product) => product.maxPerCart));
   return (
     <html lang="pt-BR" data-scroll-behavior="smooth">
       <body>
-        <RootChrome navigation={navigation} maximumCartQuantity={product?.maxPerCart ?? 1}>{children}</RootChrome>
+        <RootChrome navigation={navigation} maximumCartQuantity={maximumCartQuantity}>{children}</RootChrome>
       </body>
     </html>
   );

@@ -320,6 +320,7 @@
   cursor: pointer;
 }
 .adminRowActions button:disabled { opacity: .35; cursor: not-allowed; }
+.adminRowActions .adminButton { width: auto; height: auto; min-height: 40px; padding-inline: 12px; display: inline-flex; }
 
 .adminToggle {
   min-width: 92px;
@@ -433,8 +434,8 @@ body:has(.adminDrawerLayer[data-open="true"]) { overflow: hidden; }
 
 .adminFieldGrid { display: grid; gap: 14px; }
 .adminField { display: grid; gap: 7px; }
-.adminField > span { color: #c8c8c2; font-size: .63rem; font-weight: 700; }
-.adminField > small { color: #898989; font-size: .58rem; line-height: 1.4; }
+.adminField > span { color: #c8c8c2; font-size: .78rem; font-weight: 700; }
+.adminField > small { color: #989898; font-size: .72rem; line-height: 1.45; }
 
 .adminField input,
 .adminField textarea,
@@ -447,17 +448,29 @@ body:has(.adminDrawerLayer[data-open="true"]) { overflow: hidden; }
   border: 1px solid #3b3b3b;
   border-radius: 12px;
   outline: 0;
+  font-size: 1rem;
 }
 
 .adminField textarea { min-height: 118px; resize: vertical; line-height: 1.55; }
-.adminField input:disabled { color: #777; background: #111; cursor: not-allowed; }
+.adminField textarea[name="body"] { min-height: 280px; }
+.adminField input:disabled,
+.adminField textarea:disabled,
+.adminField select:disabled { color: #777; background: #111; cursor: not-allowed; }
+.adminField input:user-invalid,
+.adminField textarea:user-invalid,
+.adminField select:user-invalid { border-color: #d96969; box-shadow: 0 0 0 2px rgb(217 105 105 / 14%); }
 .adminInlineForm { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--admin-line); }
 
+.adminEditorLayout { width: min(100%, 900px); }
 .adminFormSection { padding: 20px 0; border-top: 1px solid var(--admin-line); }
 .adminFormSection:first-child { padding-top: 0; border-top: 0; }
-.adminFormSection h2 { font-size: .92rem; }
+.adminFormSection h2 { font-size: 1.05rem; }
 .adminFormSection > p { margin: 7px 0 15px; color: var(--admin-muted); font-size: .67rem; line-height: 1.5; }
 .adminFormActions { padding-top: 18px; display: flex; flex-wrap: wrap; gap: 10px; border-top: 1px solid var(--admin-line); }
+.adminMediaActions { margin-top: 10px; display: flex; justify-content: flex-end; }
+.adminMediaActions .adminButton { min-height: 42px; }
+.adminPublishConfirmation { min-height: 48px; display: flex; align-items: center; gap: 10px; color: #c8c8c2; font-size: .82rem; font-weight: 700; }
+.adminPublishConfirmation input { width: 22px; height: 22px; flex: 0 0 auto; }
 
 .adminRuntimeSection { margin-bottom: 14px; }
 .adminRuntimeHeader { margin-bottom: 12px; display: grid; gap: 8px; }

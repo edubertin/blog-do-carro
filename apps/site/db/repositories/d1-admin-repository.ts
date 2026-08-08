@@ -1,5 +1,6 @@
 import type {
   AdminArticleSummary,
+  AdminArticleEditorRecord,
   AdminHomeSection,
   AdminMenuItem,
   AdminProductSummary,
@@ -9,6 +10,7 @@ import type {
   MenuItemInput,
   ProductDraftInput,
 } from "../admin-contracts";
+import { conflictingResource, invalidInput, missingResource } from "../../server/admin-errors";
 import type { D1Database, D1PreparedStatement, D1Row } from "../d1";
 import type { AdminIdentity, AdminPermission } from "../../app/admin/admin-auth-core";
 
@@ -22,13 +24,13 @@ export type AdminWriteContext = Readonly<{
 
 function text(row: D1Row, key: string): string {
   const value = row[key];
-  if (typeof value !== "string") throw new Error(`Campo D1 invÃ¡lido: ${key}.`);
+  if (typeof value !== "string") throw new Error(`Campo D1 inválido: ${key}.`);
   return value;
 }
 
 function integer(row: D1Row, key: string): number {
   const value = row[key];
-  if (typeof value !== "number" || !Number.isInteger(value)) throw new Error(`Campo D1 invÃ¡lido: ${key}.`);
+  if (typeof value !== "number" || !Number.isInteger(value)) throw new Error(`Campo D1 inválido: ${key}.`);
   return value;
 }
 
@@ -51,7 +53,7 @@ function productSummary(row: D1Row): AdminProductSummary {
 
 async function subjectFingerprint(identity: AdminIdentity, hmacKey: string | null): Promise<string> {
   if (identity.localPreview) return "local-preview";
-  if (!hmacKey || new TextEncoder().encode(hmacKey).byteLength < 32) throw new Error("HMAC administrativo indisponÃ­vel.");
+  if (!hmacKey || new TextEncoder().encode(hmacKey).byteLength < 32) throw new Error("HMAC administrativo indisponível.");
   const algorithm = { name: "HMAC", hash: "SHA-256" } as const;
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(hmacKey), algorithm, false, ["sign"]);
   const signature = await crypto.subtle.sign(algorithm, key, new TextEncoder().encode(identity.actorId));
@@ -85,14 +87,13 @@ function auditStatement(
 
 async function categoryId(database: D1Database, slug: string): Promise<string> {
   const row = await database.prepare("SELECT id FROM categories WHERE slug = ? AND active = 1 LIMIT 1").bind(slug).first();
-  if (!row) throw new Error("Categoria editorial nÃ£o encontrada.");
+  if (!row) throw invalidInput("Categoria editorial não encontrada.");
   return text(row, "id");
 }
 
-async function videoId(database: D1Database, externalId: string | undefined): Promise<string | null> {
-  if (!externalId) return null;
+async function videoId(database: D1Database, externalId: string): Promise<string> {
   const row = await database.prepare("SELECT id FROM youtube_videos WHERE external_id = ? LIMIT 1").bind(externalId).first();
-  if (!row) throw new Error("VÃ­deo do YouTube nÃ£o encontrado.");
+  if (!row) throw invalidInput("O vídeo ainda não está cadastrado no CMS.");
   return text(row, "id");
 }
 
@@ -114,9 +115,21 @@ function articleStatements(
   return statements;
 }
 
-async function existingArticle(database: D1Database, slug: string): Promise<D1Row | null> {
-  const query = "SELECT a.id, a.version, COALESCE(MAX(r.revision_number), 0) AS revision_number FROM articles a LEFT JOIN article_revisions r ON r.article_id = a.id WHERE a.slug = ? GROUP BY a.id, a.version LIMIT 1";
-  return database.prepare(query).bind(slug).first();
+async function existingArticle(database: D1Database, articleId: string): Promise<D1Row> {
+  const query = "SELECT a.id, a.slug, a.version, a.lifecycle_state, COALESCE(MAX(r.revision_number), 0) AS revision_number FROM articles a LEFT JOIN article_revisions r ON r.article_id = a.id WHERE a.id = ? GROUP BY a.id, a.slug, a.version, a.lifecycle_state LIMIT 1";
+  const article = await database.prepare(query).bind(articleId).first();
+  if (!article || text(article, "lifecycle_state") === "archived") throw missingResource("Artigo editorial não encontrado.");
+  return article;
+}
+
+async function assertSlugAvailable(database: D1Database, slug: string, articleId?: string): Promise<void> {
+  const owner = await database.prepare("SELECT id FROM articles WHERE slug = ? LIMIT 1").bind(slug).first();
+  if (owner && (!articleId || text(owner, "id") !== articleId)) throw conflictingResource("Já existe um artigo com esse endereço.");
+}
+
+async function assertVideoAvailable(database: D1Database, sourceVideoId: string, articleId?: string): Promise<void> {
+  const owner = await database.prepare("SELECT id FROM articles WHERE source_video_id = ? LIMIT 1").bind(sourceVideoId).first();
+  if (owner && (!articleId || text(owner, "id") !== articleId)) throw conflictingResource("Esse vídeo já está vinculado a outro artigo.");
 }
 
 function revisedArticleStatements(
@@ -129,7 +142,7 @@ function revisedArticleStatements(
   const database = context.database;
   const statements: D1PreparedStatement[] = [
     database.prepare("INSERT INTO article_revisions (id, article_id, revision_number, workflow_state, title, subtitle, seo_description, body_json, opinion, image_url, image_alt, read_time_minutes, created_by_principal_id, created_at, version, updated_at) VALUES (?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)").bind(ids.revision, ids.article, revisionNumber, input.title, input.subtitle, input.seoDescription, JSON.stringify(input.body), input.opinion, input.imageUrl, input.imageAlt, input.readTimeMinutes, ids.principal, now, now),
-    database.prepare("UPDATE articles SET working_revision_id = ?, source_video_id = ?, version = version + 1, updated_at = ? WHERE id = ?").bind(ids.revision, ids.video, now, ids.article),
+    database.prepare("UPDATE articles SET slug = ?, working_revision_id = ?, source_video_id = ?, lifecycle_state = CASE WHEN published_revision_id IS NULL THEN 'draft' ELSE 'active' END, version = version + 1, updated_at = ? WHERE id = ?").bind(input.slug, ids.revision, ids.video, now, ids.article),
     database.prepare("INSERT INTO article_revision_categories (revision_id, category_id, is_primary) VALUES (?, ?, 1)").bind(ids.revision, ids.category),
   ];
   input.faq.forEach((faq, position) => statements.push(database.prepare("INSERT INTO article_revision_faqs (id, revision_id, position, question, answer) VALUES (?, ?, ?, ?, ?)").bind(crypto.randomUUID(), ids.revision, position, faq.question, faq.answer)));
@@ -141,7 +154,9 @@ export async function createArticleDraft(context: AdminWriteContext, input: Arti
   const principal = await ensurePrincipal(context);
   const category = await categoryId(context.database, input.categorySlug);
   const video = await videoId(context.database, input.youtubeVideoId);
-  const existing = await existingArticle(context.database, input.slug);
+  const existing = input.articleId ? await existingArticle(context.database, input.articleId) : null;
+  await assertSlugAvailable(context.database, input.slug, input.articleId);
+  await assertVideoAvailable(context.database, video, input.articleId);
   const ids = { article: existing ? text(existing, "id") : crypto.randomUUID(), revision: crypto.randomUUID(), category, video, principal };
   const version = existing ? integer(existing, "version") + 1 : 1;
   if (existing) {
@@ -155,10 +170,41 @@ export async function createArticleDraft(context: AdminWriteContext, input: Arti
   };
 }
 
+function stringArray(row: D1Row, key: string): readonly string[] {
+  const parsed: unknown = JSON.parse(text(row, key));
+  if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== "string")) throw new Error(`Campo D1 inválido: ${key}.`);
+  return parsed;
+}
+
+export async function getAdminArticle(database: D1Database, articleId: string): Promise<AdminArticleEditorRecord> {
+  const query = "SELECT a.id, a.slug, a.version, a.updated_at, r.id AS revision_id, r.title, r.subtitle, r.seo_description, r.body_json, r.opinion, r.image_url, r.image_alt, r.read_time_minutes, r.workflow_state, c.name AS category, c.slug AS category_slug, y.external_id AS youtube_video_id FROM articles a JOIN article_revisions r ON r.id = a.working_revision_id JOIN article_revision_categories arc ON arc.revision_id = r.id AND arc.is_primary = 1 JOIN categories c ON c.id = arc.category_id JOIN youtube_videos y ON y.id = a.source_video_id WHERE a.id = ? AND a.lifecycle_state <> 'archived' LIMIT 1";
+  const row = await database.prepare(query).bind(articleId).first();
+  if (!row) throw missingResource("Artigo editorial não encontrado.");
+  const faqResult = await database.prepare("SELECT question, answer FROM article_revision_faqs WHERE revision_id = ? ORDER BY position").bind(text(row, "revision_id")).all();
+  const faq = faqResult.results.map((item) => ({ question: text(item, "question"), answer: text(item, "answer") }));
+  return {
+    article: articleSummary(row),
+    draft: { articleId, title: text(row, "title"), subtitle: text(row, "subtitle"), slug: text(row, "slug"), seoDescription: text(row, "seo_description"), categorySlug: text(row, "category_slug"), body: stringArray(row, "body_json"), opinion: text(row, "opinion"), imageUrl: text(row, "image_url"), imageAlt: text(row, "image_alt"), youtubeVideoId: text(row, "youtube_video_id"), readTimeMinutes: integer(row, "read_time_minutes"), faq },
+  };
+}
+
 export async function listAdminArticles(database: D1Database): Promise<readonly AdminArticleSummary[]> {
-  const query = "SELECT a.id, a.slug, a.version, a.updated_at, r.id AS revision_id, r.title, r.workflow_state, c.name AS category FROM articles a JOIN article_revisions r ON r.id = a.working_revision_id JOIN article_revision_categories arc ON arc.revision_id = r.id AND arc.is_primary = 1 JOIN categories c ON c.id = arc.category_id ORDER BY a.updated_at DESC";
+  const query = "SELECT a.id, a.slug, a.version, a.updated_at, r.id AS revision_id, r.title, r.workflow_state, c.name AS category FROM articles a JOIN article_revisions r ON r.id = a.working_revision_id JOIN article_revision_categories arc ON arc.revision_id = r.id AND arc.is_primary = 1 JOIN categories c ON c.id = arc.category_id WHERE a.lifecycle_state <> 'archived' ORDER BY a.updated_at DESC";
   const result = await database.prepare(query).all();
   return result.results.map(articleSummary);
+}
+
+export async function archiveArticle(context: AdminWriteContext, articleId: string): Promise<void> {
+  const principal = await ensurePrincipal(context);
+  const now = Date.now();
+  const article = await context.database.prepare("SELECT id FROM articles WHERE id = ? AND lifecycle_state <> 'archived' LIMIT 1").bind(articleId).first();
+  if (!article) throw missingResource("Artigo editorial não encontrado.");
+  await context.database.batch([
+    context.database.prepare("DELETE FROM published_article_categories WHERE article_id = ?").bind(articleId),
+    context.database.prepare("DELETE FROM published_article_projections WHERE article_id = ?").bind(articleId),
+    context.database.prepare("UPDATE articles SET lifecycle_state = 'archived', archived_at = ?, version = version + 1, updated_at = ? WHERE id = ?").bind(now, now, articleId),
+    auditStatement(context, principal, "content.write", "article.archived", "article", articleId),
+  ]);
 }
 
 function normalizedSearchText(value: string): string {
@@ -166,16 +212,16 @@ function normalizedSearchText(value: string): string {
 }
 
 async function publicationSource(database: D1Database, articleId: string): Promise<D1Row> {
-  const query = "SELECT a.id, a.slug, a.working_revision_id AS revision_id, r.title, r.subtitle, r.seo_description, r.body_json, r.opinion, r.image_url, r.image_alt, r.read_time_minutes, c.id AS category_id, c.name AS category_name, c.slug AS category_slug, y.external_id AS youtube_video_external_id FROM articles a JOIN article_revisions r ON r.id = a.working_revision_id JOIN article_revision_categories arc ON arc.revision_id = r.id AND arc.is_primary = 1 JOIN categories c ON c.id = arc.category_id LEFT JOIN youtube_videos y ON y.id = a.source_video_id WHERE a.id = ? AND a.lifecycle_state <> 'archived' LIMIT 1";
+  const query = "SELECT a.id, a.slug, a.working_revision_id AS revision_id, r.workflow_state, r.title, r.subtitle, r.seo_description, r.body_json, r.opinion, r.image_url, r.image_alt, r.read_time_minutes, c.id AS category_id, c.name AS category_name, c.slug AS category_slug, y.external_id AS youtube_video_external_id FROM articles a JOIN article_revisions r ON r.id = a.working_revision_id JOIN article_revision_categories arc ON arc.revision_id = r.id AND arc.is_primary = 1 JOIN categories c ON c.id = arc.category_id JOIN youtube_videos y ON y.id = a.source_video_id WHERE a.id = ? AND a.lifecycle_state <> 'archived' LIMIT 1";
   const row = await database.prepare(query).bind(articleId).first();
-  if (!row) throw new Error("Rascunho editorial nÃ£o encontrado.");
+  if (!row) throw missingResource("Rascunho editorial não encontrado.");
   return row;
 }
 
 async function publicationFaq(database: D1Database, revisionId: string): Promise<string> {
   const result = await database.prepare("SELECT question, answer FROM article_revision_faqs WHERE revision_id = ? ORDER BY position").bind(revisionId).all();
   const faq = result.results.map((row) => ({ question: text(row, "question"), answer: text(row, "answer") }));
-  if (!faq.length) throw new Error("FAQ obrigatÃ³rio ausente.");
+  if (!faq.length) throw invalidInput("FAQ obrigatório ausente.");
   return JSON.stringify(faq);
 }
 
@@ -183,14 +229,15 @@ function projectionStatement(context: AdminWriteContext, source: D1Row, faqJson:
   const bodyJson = text(source, "body_json");
   const searchable = normalizedSearchText([text(source, "title"), text(source, "subtitle"), text(source, "category_name"), bodyJson].join(" "));
   const video = source.youtube_video_external_id === null ? null : text(source, "youtube_video_external_id");
-  const sql = "INSERT INTO published_article_projections (article_id, revision_id, slug, category_name, category_slug, title, subtitle, seo_description, search_text, image_url, image_alt, youtube_video_external_id, date_label, body_json, opinion, faq_json, read_time_minutes, published_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PUBLICADO', ?, ?, ?, ?, ?, ?) ON CONFLICT(article_id) DO UPDATE SET revision_id = excluded.revision_id, slug = excluded.slug, category_name = excluded.category_name, category_slug = excluded.category_slug, title = excluded.title, subtitle = excluded.subtitle, seo_description = excluded.seo_description, search_text = excluded.search_text, image_url = excluded.image_url, image_alt = excluded.image_alt, youtube_video_external_id = excluded.youtube_video_external_id, date_label = excluded.date_label, body_json = excluded.body_json, opinion = excluded.opinion, faq_json = excluded.faq_json, read_time_minutes = excluded.read_time_minutes, published_at = excluded.published_at, updated_at = excluded.updated_at";
+  const sql = "INSERT INTO published_article_projections (article_id, revision_id, slug, category_name, category_slug, title, subtitle, seo_description, search_text, image_url, image_alt, youtube_video_external_id, date_label, body_json, opinion, faq_json, read_time_minutes, published_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PUBLICADO', ?, ?, ?, ?, ?, ?) ON CONFLICT(article_id) DO UPDATE SET revision_id = excluded.revision_id, slug = excluded.slug, category_name = excluded.category_name, category_slug = excluded.category_slug, title = excluded.title, subtitle = excluded.subtitle, seo_description = excluded.seo_description, search_text = excluded.search_text, image_url = excluded.image_url, image_alt = excluded.image_alt, youtube_video_external_id = excluded.youtube_video_external_id, date_label = excluded.date_label, body_json = excluded.body_json, opinion = excluded.opinion, faq_json = excluded.faq_json, read_time_minutes = excluded.read_time_minutes, published_at = COALESCE(published_article_projections.published_at, excluded.published_at), updated_at = excluded.updated_at";
   return context.database.prepare(sql).bind(text(source, "id"), text(source, "revision_id"), text(source, "slug"), text(source, "category_name"), text(source, "category_slug"), text(source, "title"), text(source, "subtitle"), text(source, "seo_description"), searchable, text(source, "image_url"), text(source, "image_alt"), video, bodyJson, text(source, "opinion"), faqJson, integer(source, "read_time_minutes"), now, now);
 }
 
 export async function publishArticle(context: AdminWriteContext, articleId: string): Promise<void> {
   const principal = await ensurePrincipal(context);
   const source = await publicationSource(context.database, articleId);
-  if (text(source, "image_url").startsWith("/api/admin/")) throw new Error("MÃ­dia em estÃ¡gio privado nÃ£o pode ser publicada.");
+  if (text(source, "workflow_state") !== "review") throw conflictingResource("Envie o rascunho para revisão antes de publicar.");
+  if (text(source, "image_url").startsWith("/api/admin/")) throw invalidInput("Mídia em estágio privado não pode ser publicada.");
   const revisionId = text(source, "revision_id");
   const faqJson = await publicationFaq(context.database, revisionId);
   const now = Date.now();
@@ -201,6 +248,18 @@ export async function publishArticle(context: AdminWriteContext, articleId: stri
     context.database.prepare("DELETE FROM published_article_categories WHERE article_id = ?").bind(articleId),
     context.database.prepare("INSERT INTO published_article_categories (article_id, category_id, published_at) VALUES (?, ?, ?)").bind(articleId, text(source, "category_id"), now),
     auditStatement(context, principal, "content.publish", "article.published", "article", articleId),
+  ]);
+}
+
+export async function submitArticleForReview(context: AdminWriteContext, articleId: string): Promise<void> {
+  const principal = await ensurePrincipal(context);
+  const source = await publicationSource(context.database, articleId);
+  if (text(source, "workflow_state") !== "draft") throw conflictingResource("Somente um rascunho pode ser enviado para revisão.");
+  const revisionId = text(source, "revision_id");
+  const now = Date.now();
+  await context.database.batch([
+    context.database.prepare("UPDATE article_revisions SET workflow_state = 'review', version = version + 1, updated_at = ? WHERE id = ? AND workflow_state = 'draft'").bind(now, revisionId),
+    auditStatement(context, principal, "content.review", "article.review.submitted", "article", articleId),
   ]);
 }
 

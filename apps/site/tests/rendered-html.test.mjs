@@ -68,8 +68,7 @@ const htmlRoutes = [
   ["/artigos/moto-por-spin-financiada-bom-negocio", /Minha opinião/i],
   ["/categoria/negociacoes", /Conteúdo direto/i],
   ["/categoria/sedan", /Garagem em preparação/i],
-  ["/loja", /Coleção Presença/i],
-  ["/loja/chaveiro-presente", /Compra simulada/i],
+  ["/loja", /Chaveiro Blog do Carro/i],
   ["/carrinho", /Preparando seu carrinho/i],
   ["/checkout", /Checkout demonstrativo/i],
   ["/sobre", /Informação com contexto/i],
@@ -105,6 +104,19 @@ test("server-renders the public route matrix", async (contextTest) => {
       assert.match(html, expectedContent);
     });
   }
+});
+
+test("renders the approved two-product storefront without retired copy", async () => {
+  const worker = await loadWorker();
+  const responses = await Promise.all([
+    fetchRoute(worker, "/"),
+    fetchRoute(worker, "/loja"),
+  ]);
+  const storefrontHtml = (await Promise.all(responses.map((response) => response.text()))).join("\n");
+  assert.match(storefrontHtml, /chaveiro-blog-do-carro/i);
+  assert.match(storefrontHtml, /miniatura-blog-do-carro/i);
+  assert.doesNotMatch(storefrontHtml, /Chaveiro Presente/i);
+  assert.doesNotMatch(storefrontHtml, /Coleção Presença/i);
 });
 
 test("serves crawler metadata", async () => {
@@ -227,6 +239,17 @@ test("renders only sanitized runtime inventory and ignores spoofed inventory hea
   assert.doesNotMatch(html, /secret-private-value/i);
 });
 
+test("returns legible Portuguese errors from the admin API", async () => {
+  const worker = await loadWorker();
+  const response = await worker.fetch(
+    new Request("http://localhost/api/admin/articles"),
+    environment,
+    context,
+  );
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { error: "Banco editorial indisponível." });
+});
+
 test("gates the hosted admin through SIWC and a server-side owner bootstrap", async () => {
   const worker = await loadWorker();
   const configuredEnvironment = { ...environment, ADMIN_OWNER_USER_IDS: '["owner-alpha"]' };
@@ -323,7 +346,27 @@ test("supports the temporary normalized owner email bootstrap without exposing i
   assert.equal(access.identity.displayName, "Administrador");
 });
 
-test("fails closed when owner bootstrap or stable Sites identity is absent", async () => {
+test("requires the explicit email bootstrap flag for a second owner", async () => {
+  const { resolveAdminAccess } = await loadAdminAuthCore();
+  const headers = new Headers({
+    "oai-authenticated-user-id": "second-owner-subject",
+    "oai-authenticated-user-email": " second.owner@example.com ",
+  });
+  const bootstrap = {
+    userIds: JSON.stringify(["existing-owner-subject"]),
+    emailAllowlist: JSON.stringify(["second.owner@example.com"]),
+  };
+
+  assert.equal(resolveAdminAccess(headers, "blogdocarro.com", bootstrap).kind, "denied");
+  const allowed = resolveAdminAccess(headers, "blogdocarro.com", {
+    ...bootstrap,
+    emailBootstrapEnabled: true,
+  });
+  assert.equal(allowed.kind, "allowed");
+  assert.equal(allowed.identity.actorId, "second-owner-subject");
+});
+
+test("supports default email bootstrap when owner ID allowlist is absent", async () => {
   const { resolveAdminAccess } = await loadAdminAuthCore();
   const identity = new Headers({ "oai-authenticated-user-id": "owner-alpha" });
   assert.equal(resolveAdminAccess(identity, "blogdocarro.com", {}).kind, "misconfigured");
@@ -341,7 +384,7 @@ test("fails closed when owner bootstrap or stable Sites identity is absent", asy
     "blogdocarro.com",
     { emailAllowlist: "owner@example.com" },
   );
-  assert.equal(disabledEmailBootstrap.kind, "misconfigured");
+  assert.equal(disabledEmailBootstrap.kind, "allowed");
 });
 
 test("limits local admin preview to exact loopback hosts", async () => {

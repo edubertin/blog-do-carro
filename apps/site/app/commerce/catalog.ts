@@ -1,6 +1,10 @@
-export const productId = "chaveiro-presente" as const;
+export const productIds = ["chaveiro-blog-do-carro", "miniatura-blog-do-carro"] as const;
 
-export type ProductId = typeof productId;
+export type ProductId = (typeof productIds)[number];
+
+export function isProductId(value: unknown): value is ProductId {
+  return typeof value === "string" && productIds.some((id) => id === value);
+}
 
 export type ShippingId = "economico" | "expresso";
 
