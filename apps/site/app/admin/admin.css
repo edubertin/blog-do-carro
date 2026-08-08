@@ -467,7 +467,7 @@ body:has(.adminDrawerLayer[data-open="true"]) { overflow: hidden; }
 .adminFormSection h2 { font-size: 1.05rem; }
 .adminFormSection > p { margin: 7px 0 15px; color: var(--admin-muted); font-size: .67rem; line-height: 1.5; }
 .adminFormActions { padding-top: 18px; display: flex; flex-wrap: wrap; gap: 10px; border-top: 1px solid var(--admin-line); }
-.adminMediaActions { margin-top: 10px; display: flex; justify-content: flex-end; }
+.adminMediaActions { margin-top: 10px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .adminMediaActions .adminButton { min-height: 42px; }
 .adminStructuredEditor { display: grid; gap: 14px; }
 .adminStructuredBlock { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--admin-line); border-radius: 14px; background: rgba(255, 255, 255, 0.025); }
@@ -634,3 +634,6 @@ body:has(.adminDrawerLayer[data-open="true"]) { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .adminDrawer { transition-duration: .01ms; }
 }
+.adminCoverPreview { display: block; width: 100%; height: auto; max-height: 520px; object-fit: cover; border-radius: 16px; }
+.adminMediaPlaceholder, .adminMediaWarning { margin: 0; padding: 14px 16px; border: 1px solid var(--admin-line); border-radius: 12px; color: var(--admin-muted); }
+.adminMediaWarning { border-color: rgba(244, 180, 0, .45); color: var(--admin-text); }

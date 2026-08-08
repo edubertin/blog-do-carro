@@ -9,6 +9,7 @@ import { Comments } from "./comments";
 import { Reveal } from "./motion";
 import { YouTubeConsentEmbed } from "./youtube-consent-embed";
 import { ArticleBlocksRenderer } from "./article-blocks-renderer";
+import { isManagedMediaPath } from "@/domain/media-path";
 
 function Breadcrumbs({ article }: { article: PublicArticle }) {
   return <nav className="breadcrumbs" aria-label="Breadcrumb"><Link href="/">Início</Link><span>/</span><Link href={`/categoria/${article.categorySlug}`}>{article.category}</Link><span>/</span><strong>Artigo</strong></nav>;
@@ -58,7 +59,7 @@ function VideoFacade({ article }: { article: PublicArticle }) {
     <section className="videoSection">
       <div className="articleSectionTitle"><span className="eyebrow">Assista também</span><h2>Vídeo do Blog do Carro</h2></div>
       <a className="videoFacade" href={`https://www.youtube.com/results?search_query=${query}`} target="_blank" rel="noreferrer">
-        <Image src={article.image} alt="" fill sizes="(max-width: 760px) 100vw, 760px" />
+        <Image src={article.image} alt="" fill sizes="(max-width: 760px) 100vw, 760px" unoptimized={isManagedMediaPath(article.image)} />
         <span><Play size={28} weight="fill" />Abrir no YouTube</span>
       </a>
     </section>
@@ -78,7 +79,7 @@ function Related({ articles }: { articles: readonly PublicArticle[] }) {
   return (
     <section className="articleBlock">
       <div className="articleSectionTitle"><span className="eyebrow">Continue lendo</span><h2>Artigos relacionados</h2></div>
-      <div className="relatedGrid">{articles.map((item) => <Link href={`/artigos/${item.slug}`} key={item.slug}><div><Image src={item.image} alt="" fill sizes="320px" /></div><span>{item.category}</span><h3>{item.title}</h3></Link>)}</div>
+      <div className="relatedGrid">{articles.map((item) => <Link href={`/artigos/${item.slug}`} key={item.slug}><div><Image src={item.image} alt="" fill sizes="320px" unoptimized={isManagedMediaPath(item.image)} /></div><span>{item.category}</span><h3>{item.title}</h3></Link>)}</div>
     </section>
   );
 }
@@ -92,7 +93,7 @@ export function ArticlePage({ article, relatedArticles }: ArticlePageProps): Rea
   return (
     <main className="articlePage">
       <Reveal><ArticleIntro article={article} /></Reveal>
-      <Reveal className="articleLeadImage"><Image src={article.image} alt={article.imageAlt} fill loading="eager" fetchPriority="high" sizes="(max-width: 1023px) 100vw, 980px" /></Reveal>
+      <Reveal className="articleLeadImage"><Image src={article.image} alt={article.imageAlt} fill loading="eager" fetchPriority="high" sizes="(max-width: 1023px) 100vw, 980px" unoptimized={isManagedMediaPath(article.image)} /></Reveal>
       <article className="articleBody"><ArticleBlocksRenderer body={article.body} /><Opinion text={article.opinion} /><VideoFacade article={article} /><Faq article={article} /><Related articles={relatedArticles} /><section className="articleBlock commentsBlock"><div className="articleSectionTitle"><span className="eyebrow">Comunidade</span><h2>Comentários</h2></div><Comments /></section></article>
     </main>
   );

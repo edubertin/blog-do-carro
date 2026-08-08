@@ -83,7 +83,18 @@ test("renders uploaded article images with their stored aspect ratio", () => {
   const renderer = readFileSync(new URL("../app/components/article-blocks-renderer.tsx", import.meta.url), "utf8");
   assert.match(renderer, /width=\{block\.width\}/);
   assert.match(renderer, /height=\{block\.height\}/);
+  assert.match(renderer, /unoptimized/);
   assert.doesNotMatch(renderer, /width=\{1200\}\s+height=\{800\}/);
+});
+
+test("recognizes only canonical CMS media paths", async () => {
+  const { isManagedMediaPath, managedMediaAssetId } = await loadTypescriptModule("../domain/media-path.ts");
+  const id = "11111111-1111-4111-8111-111111111111";
+  assert.equal(isManagedMediaPath(`/media/${id}`), true);
+  assert.equal(managedMediaAssetId(`/media/${id}`), id);
+  for (const value of ["/images/capa.png", "/api/admin/media/asset", "https://drive.google.com/file/test", "/media/not-a-uuid"]) {
+    assert.equal(isManagedMediaPath(value), false);
+  }
 });
 
 test("keeps staged R2 objects private and serves only their published D1 projection", async () => {

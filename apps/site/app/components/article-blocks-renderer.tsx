@@ -11,7 +11,7 @@ export function ArticleBlocksRenderer({ body }: Readonly<{ body: PublicArticle["
     return (
       <figure className={`articleInlineImage articleInlineImage--${block.alignment}`} key={block.id}>
         {block.width && block.height
-          ? <Image src={`/media/${encodeURIComponent(block.assetId)}`} alt={block.alt} width={block.width} height={block.height} loading="lazy" sizes="(max-width: 760px) 100vw, 760px" />
+          ? <Image src={`/media/${encodeURIComponent(block.assetId)}`} alt={block.alt} width={block.width} height={block.height} loading="lazy" sizes="(max-width: 760px) 100vw, 760px" unoptimized />
           // Legacy structured records may predate intrinsic media dimensions; the browser must recover their natural ratio.
           // eslint-disable-next-line @next/next/no-img-element
           : <img src={`/media/${encodeURIComponent(block.assetId)}`} alt={block.alt} loading="lazy" decoding="async" />}

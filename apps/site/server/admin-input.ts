@@ -1,6 +1,7 @@
 import type { ArticleDraftInput, HomeSectionInput, MenuItemInput, ProductDraftInput } from "../db/admin-contracts";
 import { articleText, parseArticleContent } from "../domain/article-content";
 import { invalidInput } from "./admin-errors";
+import { isManagedMediaPath } from "../domain/media-path";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -41,6 +42,12 @@ function urlOrPathField(record: JsonRecord, key: string): string {
     console.info("URL administrativa rejeitada durante validação.", error);
   }
   throw invalidInput(`URL ou caminho inválido: ${key}.`);
+}
+
+function managedArticleImage(record: JsonRecord): string {
+  const value = textField(record, "imageUrl", 80);
+  if (isManagedMediaPath(value)) return value;
+  throw invalidInput("Envie a imagem principal pelo CMS antes de salvar o artigo.");
 }
 
 function articleBody(record: JsonRecord): ArticleDraftInput["body"] {
@@ -91,7 +98,7 @@ export function parseArticleDraftInput(value: unknown): ArticleDraftInput {
     title: textField(record, "title", 180, 10), subtitle: textField(record, "subtitle", 360, 20),
     slug: slugField(record, "slug"), seoDescription: textField(record, "seoDescription", 180, 50),
     categorySlug: slugField(record, "categorySlug"), body,
-    opinion: textField(record, "opinion", 4_000, 20), imageUrl: urlOrPathField(record, "imageUrl"),
+    opinion: textField(record, "opinion", 4_000, 20), imageUrl: managedArticleImage(record),
     imageAlt: textField(record, "imageAlt", 240, 5), youtubeVideoId: youtube,
     readTimeMinutes: integerField(record, "readTimeMinutes", 1, 120), faq: faqItems(record),
   };
