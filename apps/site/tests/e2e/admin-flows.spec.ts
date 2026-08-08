@@ -91,6 +91,9 @@ test("novo artigo abre vazio e sem checklist lateral", async ({ page }) => {
 
 test("artigo percorre rascunho, revisão e publicação", async ({ page }) => {
   const requests: string[] = [];
+  let refreshAttempts = 0;
+  const publishedArticle = { id: "article-flow", revisionId: "revision-1", slug: "artigo-de-teste", title: "Título completo de teste", category: "Negociações", state: "published", version: 2, updatedAt: Date.now(), videoAvailability: "pending" };
+  const publishedDraft = { articleId: "article-flow", title: "Título completo de teste", subtitle: "Subtítulo completo para validar o fluxo editorial.", slug: "artigo-de-teste", seoDescription: "Descrição completa para validar busca e compartilhamento do artigo de teste no portal automotivo.", categorySlug: "negociacoes", body: ["Este é um parágrafo completo usado para validar o fluxo editorial do CMS. Ele possui conteúdo suficiente para passar pela validação mínima exigida."], opinion: "Esta é uma opinião editorial completa para o teste.", imageUrl: "/images/articles/hero-negociacoes.png", imageAlt: "Carro usado para ilustrar o artigo de teste", youtubeVideoId: "jT0j_rCgbbc", readTimeMinutes: 6, faq: [{ question: "Este fluxo editorial funciona corretamente?", answer: "Sim, o teste percorre todas as etapas obrigatórias." }] };
   await page.route("**/api/admin/articles", async (route) => {
     requests.push(`draft:${route.request().method()}`);
     const article = { id: "article-flow", revisionId: "revision-1", slug: "artigo-de-teste", title: "Título completo de teste", category: "Negociações", state: "draft", version: 1, updatedAt: Date.now(), videoAvailability: "pending" };
@@ -103,6 +106,12 @@ test("artigo percorre rascunho, revisão e publicação", async ({ page }) => {
   await page.route("**/api/admin/articles/article-flow/publish", async (route) => {
     requests.push(`publish:${route.request().method()}`);
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+  });
+  await page.route("**/api/admin/articles/article-flow", (route) => {
+    refreshAttempts += 1;
+    return refreshAttempts === 1
+      ? route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "Leitura temporariamente indisponível." }) })
+      : route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ article: publishedArticle, draft: publishedDraft }) });
   });
   await page.goto("/admin/artigos/novo", { waitUntil: "networkidle" });
   await page.locator('[name="youtubeUrl"]').fill("jT0j_rCgbbc");
@@ -124,8 +133,14 @@ test("artigo percorre rascunho, revisão e publicação", async ({ page }) => {
   await page.getByRole("button", { name: "Enviar para revisão" }).click();
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Publicar artigo" }).click();
+  await expect.poll(() => refreshAttempts).toBe(2);
   await expect(page.getByRole("button", { name: "Artigo publicado" })).toBeVisible();
-  expect(requests).toEqual(["draft:POST", "review:POST", "publish:POST"]);
+  await expect(page).toHaveURL(/article=article-flow/u);
+  await page.getByRole("button", { name: "Criar nova revisão" }).click();
+  await page.getByRole("textbox", { name: "Título", exact: true }).fill("Título revisado após publicação");
+  await page.getByRole("button", { name: "Salvar rascunho" }).click();
+  await expect(page.getByRole("button", { name: "Enviar para revisão" })).toBeVisible();
+  expect(requests).toEqual(["draft:POST", "review:POST", "publish:POST", "draft:POST"]);
 });
 
 test("editar artigo carrega a revisão pelo identificador", async ({ page }) => {
