@@ -15,6 +15,8 @@ Construir um portal automotivo brasileiro com experiência de aplicativo, priori
 - Motion discreto, com respeito a `prefers-reduced-motion`.
 - Imagens editoriais responsivas pela API compatível `next/image`, atendida pelo worker Vinext.
 - Loja da comunidade com chaveiro e miniatura conceitual para impressão 3D, em fluxo demonstrativo sem cobrança, persistência ou envio.
+- Chaveiro disponível no fluxo demonstrativo por `R$ 9,90`; miniatura visível como `coming_soon`, sem preço ou ação de compra.
+- A navegação editorial “O que você quer resolver?” fica temporariamente removida da home até sua readaptação.
 - Domínio canônico definitivo `https://blogdocarro.com`.
 - Mercado Pago como único destino futuro de pagamento, exclusivamente para Pix e ainda bloqueado.
 - Categorias sem conteúdo publicado permanecem vazias; o produto não gera artigos com IA para preenchê-las.
@@ -27,6 +29,8 @@ Construir um portal automotivo brasileiro com experiência de aplicativo, priori
 - `docs/adr/0004-mercado-pago-pix-only.md`: Mercado Pago somente Pix, sem ativação real.
 - `docs/adr/0005-empty-categories-no-ai-content.md`: categorias vazias não recebem conteúdo gerado.
 - `docs/adr/0006-d1-foundation-without-pii.md`: primeiro migration D1 local sem PII, cliente, pagamento ou envio.
+- `docs/adr/0007-sites-bindings-fail-closed.md`: D1 e R2 usam gates server-side independentes.
+- `docs/adr/0008-structured-editor-media-lifecycle.md`: conteúdo em blocos e mídia vinculada por revisão.
 
 ## Arquitetura alvo
 
@@ -61,7 +65,7 @@ Todo artigo deve exigir os campos:
 1. título, subtítulo, slug e descrição SEO;
 2. imagem principal com texto alternativo;
 3. categoria, autor, data e tempo de leitura;
-4. conteúdo estruturado;
+4. documento versionado de blocos `paragraph | heading | image`;
 5. bloco “Minha opinião”;
 6. URL ou ID de vídeo do YouTube;
 7. FAQ;
@@ -69,6 +73,8 @@ Todo artigo deve exigir os campos:
 9. status `rascunho`, `revisão`, `agendado` ou `publicado`.
 
 Configurações da página inicial, menu e newsletter devem ser documentos próprios no CMS interno, editáveis sem alteração de código.
+
+Artigos legados em `string[]` continuam legíveis por conversão em memória para blocos de parágrafo. Novas revisões usam o documento versionado; HTML livre não é persistido. Imagens de capa e internas referenciam `mediaAssetId` e são vinculadas à revisão, conforme `docs/specs/structured-editor-media.md`.
 
 Categorias sem artigos publicados exibem um estado vazio honesto. Nenhum artigo será gerado ou publicado por IA apenas para preencher uma categoria.
 
@@ -79,7 +85,7 @@ Categorias sem artigos publicados exibem um estado vazio honesto. Nenhum artigo 
 - Home responsiva baseada na direção visual escolhida.
 - Menu, busca, categorias e navegação inferior funcionais.
 - Página completa de artigo e páginas institucionais.
-- Vitrine do chaveiro e da miniatura Blog do Carro com preço ilustrativo, quantidade e entrada no carrinho.
+- Vitrine do chaveiro por `R$ 9,90`, com entrada no carrinho demonstrativo; miniatura marcada `Em breve`, sem ação de compra.
 - Carrossel editorial sincronizável com os quatro vídeos mais recentes do canal Deu Negócio.
 - Loja da Comunidade com catálogo inicial e jornada demonstrativa até a confirmação.
 - Metadados, Open Graph, dados estruturados e rotas amigáveis.
@@ -91,7 +97,7 @@ Categorias sem artigos publicados exibem um estado vazio honesto. Nenhum artigo 
 - Proteger o painel com Sites/ChatGPT SIWC, autorização server-side, RBAC e bootstrap de owner fora do Git.
 - Implementar preview, rascunho, agendamento, publicação e histórico de alterações.
 - Configurar sitemap, feed, redirects e revalidação automática.
-- Ativar R2 para uploads com validação de tipo, tamanho, dimensões e texto alternativo obrigatório.
+- Homologar R2 para uploads com validação de tipo, tamanho, dimensões e texto alternativo obrigatório, mantendo publicação pública fail-closed até os testes completos.
 
 ### Fase 2 — crescimento e comunidade
 
@@ -142,7 +148,7 @@ O painel será um conjunto protegido dentro do mesmo aplicativo, sem um segundo 
 | `/admin/integracoes` | status e configuração dos conectores permitidos |
 | `/admin/seguranca` | papéis, sessões, permissões, flags e trilha de auditoria |
 
-O editor salva automaticamente, alerta sobre alterações não publicadas e separa claramente `Salvar rascunho`, `Enviar para revisão`, `Agendar` e `Publicar`. A publicação exige validação de slug, SEO, imagem, categoria, vídeo, opinião e FAQ.
+O editor v1 organiza o corpo em blocos de parágrafo, subtítulo e imagem, permite inserir imagem entre parágrafos e separa claramente `Salvar rascunho`, `Enviar para revisão`, `Agendar` e `Publicar`. A publicação exige validação de slug, SEO, imagem, categoria, vídeo, opinião e FAQ. Autosave fica fora do primeiro corte: o estado salvo/não salvo deve ser explícito.
 
 ### Modelo de dados inicial no D1
 
@@ -170,14 +176,15 @@ A especificação completa do painel, RBAC, audit log, conectores e limites do m
 
 ## Estado atual
 
-- Fase 0 implementada e estabilizada no runtime Vinext/Sites.
+- Portal público e CMS editorial publicados e estabilizados no runtime Vinext/Sites.
 - Build empacota o worker, assets e `.openai/hosting.json`.
-- Bindings lógicos D1/R2 estão declarados; leitura pública, escrita hospedada e upload permanecem desligados por flags independentes. Não existe efeito externo de pagamento ou envio.
+- Leitura pública D1 e escritas CMS estão ativas em produção, com autorização server-side e projeção publicada. O R2 permanece fail-closed para entrega pública de mídia. Não existe efeito externo de pagamento ou envio.
 - As migrations D1 e o seed não sensível estão versionados, passam em SQLite efêmero e são exercitados no runtime local.
 - Carrossel, conteúdo editorial, busca, loja e checkout demonstrativo consomem contratos server-side e estão prontos para validação visual.
-- O CMS administrativo persiste artigos, produtos, composição da home e menu no D1 local, com fronteira SIWC/owner, audit log e nenhuma chamada externa.
+- O CMS administrativo persiste artigos, produtos, composição da home e menu no D1, com fronteira SIWC/owner, audit log e nenhuma chamada externa. A autorização usa IDs estáveis provisionados fora do Git; o bootstrap temporário por e-mail está desligado.
 - A projeção pública já alimenta home, navegação, artigo, relacionados, categorias, sitemap e catálogo; corpos editoriais e SQL não entram nos chunks do navegador.
-- Próximo corte recomendado: validar o adapter D1 em preview isolado e implementar o publicador transacional antes de qualquer CRUD real.
+- Catálogo atual: chaveiro disponível no fluxo demonstrativo por `R$ 9,90` e miniatura `coming_soon`, sem CTA de compra. A navegação editorial foi removida temporariamente da home.
+- Próximo corte: homologar armazenamento/publicação R2 e entregar o editor de blocos v1 com rollback seguro.
 
 ## Spike — vídeo novo para artigo e carrossel
 
@@ -199,7 +206,8 @@ A especificação completa do painel, RBAC, audit log, conectores e limites do m
 
 ### Primeira validação
 
-- Usar a rota interna `/loja` como catálogo e `/loja/chaveiro-presente` como página do produto.
+- Usar a rota interna `/loja` como catálogo e a página do chaveiro como produto disponível no fluxo demonstrativo por `R$ 9,90`.
+- Manter a miniatura no catálogo como `coming_soon`, sem preço, botão ou inclusão no carrinho.
 - Percorrer produto, carrinho, identificação, entrega, Pix, revisão e confirmação em modo demonstrativo.
 - Persistir somente produto e quantidade; dados pessoais permanecem na memória da página.
 - Manter Login Mercado Livre, Mercado Pago, Meu Envio, cobrança e pedido persistente desligados.

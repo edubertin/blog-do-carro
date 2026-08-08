@@ -6,6 +6,7 @@ import type {
   PublishedContentRepository,
 } from "../contracts";
 import type { PublicArticle } from "../../domain/public-content";
+import { articleText, parseArticleContent } from "../../domain/article-content";
 
 function normalizedLimit(limit: number): number {
   if (!Number.isInteger(limit) || limit < 1) return 1;
@@ -26,7 +27,7 @@ function relatedArticles(seed: FoundationRepositorySeed, article: PublicArticle,
 function searchArticles(seed: FoundationRepositorySeed, query: string, limit: number) {
   const term = normalizedSearchText(query.trim());
   return seed.articles.filter((article) => {
-    const searchable = [article.title, article.category, article.subtitle, ...article.body].join(" ");
+    const searchable = [article.title, article.category, article.subtitle, articleText(parseArticleContent(article.body))].join(" ");
     return normalizedSearchText(searchable).includes(term);
   }).slice(0, normalizedLimit(limit)).map(({ slug, category, title, subtitle }) => ({ slug, category, title, subtitle }));
 }

@@ -1,4 +1,4 @@
-import type { ProductId, ShippingId } from "./catalog";
+import type { PurchasableProductId, ShippingId } from "./catalog";
 
 export type CheckoutStep = "identity" | "delivery" | "payment" | "review";
 
@@ -46,6 +46,6 @@ export type DemoOrder = Readonly<{
 }>;
 
 export type DemoOrderLine = Readonly<{
-  productId: ProductId;
+  productId: PurchasableProductId;
   quantity: number;
 }>;

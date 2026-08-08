@@ -82,7 +82,7 @@ test("artigo percorre rascunho, revisão e publicação", async ({ page }) => {
   await page.locator('[name="subtitle"]').fill("Subtítulo completo para validar o fluxo editorial.");
   await page.locator('[name="categorySlug"]').selectOption("negociacoes");
   await page.locator('[name="readTimeMinutes"]').fill("6");
-  await page.locator('[name="body"]').fill("Este é um parágrafo completo usado para validar o fluxo editorial do CMS. Ele possui conteúdo suficiente para passar pela validação mínima exigida.");
+  await page.getByRole("textbox", { name: "Parágrafo" }).fill("Este é um parágrafo completo usado para validar o fluxo editorial do CMS. Ele possui conteúdo suficiente para passar pela validação mínima exigida.");
   await page.locator('[name="imageUrl"]').fill("/images/articles/hero-negociacoes.png");
   await page.locator('[name="imageAlt"]').fill("Carro usado para ilustrar o artigo de teste");
   await page.locator('[name="opinion"]').fill("Esta é uma opinião editorial completa para o teste.");

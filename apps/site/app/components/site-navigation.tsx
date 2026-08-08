@@ -102,7 +102,7 @@ function MenuDrawer({ open, onClose, categories, items }: DrawerProps): ReactEle
             <X size={22} weight="bold" aria-hidden="true" />
           </button>
         </div>
-        <nav className="drawerLinks">{items.map((item) => <Link href={item.href} onClick={onClose} key={item.href}>{item.label}</Link>)}</nav>
+        <nav className="drawerLinks">{items.filter((item) => item.href !== "/#categorias").map((item) => <Link href={item.href} onClick={onClose} key={item.href}>{item.label}</Link>)}</nav>
         <p className="drawerLabel">Categorias</p>
         <div className="drawerCategories">{categories.map((category) => <Link href={`/categoria/${category.slug}`} onClick={onClose} key={category.slug}>{category.name}</Link>)}</div>
       </aside>
@@ -213,7 +213,7 @@ function BottomNav({ onSearch }: { onSearch: () => void }): ReactElement {
     <nav className="bottomNav" aria-label="Navegação rápida">
       <Link className={pathname === "/" ? "active" : ""} href="/"><House size={21} weight="fill" /><span>Início</span></Link>
       <CartLink />
-      <Link href="/#categorias"><SquaresFour size={21} /><span>Categorias</span></Link>
+      <Link className={pathname === "/loja" ? "active" : ""} href="/loja"><SquaresFour size={21} /><span>Loja</span></Link>
       <button type="button" onClick={onSearch}><MagnifyingGlass size={21} /><span>Buscar</span></button>
     </nav>
   );

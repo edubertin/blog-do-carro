@@ -6,6 +6,8 @@ import test from "node:test";
 const foundationMigrationSql = readFileSync(new URL("../drizzle/0001_d1_foundation.sql", import.meta.url), "utf8");
 const cmsMigrationSql = readFileSync(new URL("../drizzle/0002_cms_media.sql", import.meta.url), "utf8");
 const catalogMigrationSql = readFileSync(new URL("../drizzle/0003_community_store_catalog.sql", import.meta.url), "utf8");
+const structuredMediaMigrationSql = readFileSync(new URL("../drizzle/0004_structured_article_media.sql", import.meta.url), "utf8");
+const storefrontMigrationSql = readFileSync(new URL("../drizzle/0005_storefront_refresh.sql", import.meta.url), "utf8");
 const seedSql = readFileSync(new URL("../drizzle/0001_foundation_seed.sql", import.meta.url), "utf8");
 const hostingConfig = JSON.parse(readFileSync(new URL("../.openai/hosting.json", import.meta.url), "utf8"));
 
@@ -15,6 +17,8 @@ function foundationDatabase() {
   database.exec(seedSql);
   database.exec(cmsMigrationSql);
   database.exec(catalogMigrationSql);
+  database.exec(structuredMediaMigrationSql);
+  database.exec(storefrontMigrationSql);
   return database;
 }
 
@@ -37,6 +41,7 @@ test("applies the D1 foundation migration to an empty SQLite database", () => {
     "audit_events",
     "idempotency_records",
     "media_assets",
+    "article_revision_media",
   ]) {
     assert.ok(tables.includes(table), `missing table ${table}`);
   }
@@ -57,8 +62,13 @@ test("seeds only non-sensitive editorial and preview catalog data", () => {
   );
   assert.deepEqual(
     database.prepare("SELECT price_cents FROM product_variants ORDER BY price_cents").all().map((row) => row.price_cents),
-    [2990, 4990],
+    [990, 4990],
   );
+  assert.deepEqual(
+    database.prepare("SELECT slug, status FROM products ORDER BY slug").all().map((row) => [row.slug, row.status]),
+    [["chaveiro-blog-do-carro", "active"], ["miniatura-blog-do-carro", "preview"]],
+  );
+  assert.equal(database.prepare("SELECT active FROM menu_items WHERE href = '/#categorias'").get().active, 0);
   assert.deepEqual(
     { ...database.prepare("SELECT mode, checkout_enabled FROM store_settings WHERE id = 1").get() },
     { mode: "demo", checkout_enabled: 0 },
@@ -116,4 +126,13 @@ test("upgrades existing editorial rows and constrains staged media", () => {
   assert.deepEqual({ ...revision }, { version: 1, updated_at: 0 });
   database.exec("INSERT INTO media_assets (id, object_key, content_type, byte_size, alt_text, lifecycle_state, created_at, updated_at) VALUES ('media-1', 'staged/media-1.webp', 'image/webp', 1200, 'Imagem de teste', 'staged', 1, 1)");
   assert.throws(() => database.exec("INSERT INTO media_assets (id, object_key, content_type, byte_size, alt_text, lifecycle_state, created_at, updated_at) VALUES ('media-2', 'staged/media-2.svg', 'image/svg+xml', 1200, 'SVG', 'staged', 1, 1)"));
+});
+
+test("links structured article media without allowing referenced assets to be deleted", () => {
+  const database = foundationDatabase();
+  database.exec("INSERT INTO media_assets (id, object_key, content_type, byte_size, alt_text, lifecycle_state, created_at, updated_at, width, height, sha256) VALUES ('media-linked', 'media/media-linked/original.webp', 'image/webp', 1200, 'Imagem de teste', 'staged', 1, 1, 1200, 800, 'abc')");
+  database.exec("INSERT INTO article_revision_media (revision_id, media_asset_id, usage, block_id, position, alt_text) VALUES ('rev_moto_spin_001', 'media-linked', 'inline', 'block-1', 1, 'Imagem de teste')");
+  assert.throws(() => database.exec("DELETE FROM media_assets WHERE id = 'media-linked'"));
+  database.exec("INSERT INTO media_assets (id, object_key, content_type, byte_size, alt_text, lifecycle_state, created_at, updated_at, width, height, sha256) VALUES ('media-cover', 'media/media-cover/original.webp', 'image/webp', 1200, 'Capa do artigo', 'staged', 1, 1, 1200, 800, 'def')");
+  database.exec("INSERT INTO article_revision_media (revision_id, media_asset_id, usage, block_id, position, alt_text) VALUES ('rev_moto_spin_001', 'media-cover', 'cover', 'cover', 0, 'Capa do artigo')");
 });

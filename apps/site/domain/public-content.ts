@@ -17,7 +17,7 @@ export type PublicArticle = Readonly<{
   image: string;
   imageAlt: string;
   videoId?: string;
-  body: readonly string[];
+  body: ArticleContentDocument | readonly string[];
   opinion: string;
   faq: readonly PublicFaq[];
 }>;
@@ -78,3 +78,4 @@ export type CategoryPageProjection = Readonly<{
   category: PublicCategory;
   articles: readonly PublicArticle[];
 }>;
+import type { ArticleContentDocument } from "./article-content";

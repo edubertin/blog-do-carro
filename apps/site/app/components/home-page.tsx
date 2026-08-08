@@ -1,5 +1,4 @@
 import { ArrowRight } from "@phosphor-icons/react/dist/ssr/ArrowRight";
-import { CaretDown } from "@phosphor-icons/react/dist/ssr/CaretDown";
 import { Clock } from "@phosphor-icons/react/dist/ssr/Clock";
 import { Fire } from "@phosphor-icons/react/dist/ssr/Fire";
 import { TrendUp } from "@phosphor-icons/react/dist/ssr/TrendUp";
@@ -7,7 +6,7 @@ import Image from "next/image";
 import { SiteLink as Link } from "@/app/components/site-link";
 import type { ReactElement } from "react";
 import type { CatalogProduct } from "@/db/contracts";
-import type { HomeProjection, PublicArticle, PublicCategoryGroup } from "@/domain/public-content";
+import type { HomeProjection, PublicArticle } from "@/domain/public-content";
 import { NewsletterForm } from "./lead-forms";
 import { HomeStoreCarousel } from "./commerce/home-store-carousel";
 import { Reveal } from "./motion";
@@ -40,24 +39,6 @@ function LatestArticles({ articles }: { articles: readonly PublicArticle[] }) {
   );
 }
 
-function CategoryGroup({ group }: { group: PublicCategoryGroup }) {
-  return (
-    <details className="categoryGroup" open={group.index === "01"}>
-      <summary><div className="categoryGroupIntro"><span>{group.index}</span><div><h3>{group.title}</h3><p>{group.description}</p></div></div><CaretDown size={19} weight="bold" /></summary>
-      <nav aria-label={group.title}>{group.items.map((category) => <Link href={`/categoria/${category.slug}`} key={category.slug}><span>{category.name}</span><ArrowRight size={16} /></Link>)}</nav>
-    </details>
-  );
-}
-
-function CategoryIndex({ groups }: { groups: readonly PublicCategoryGroup[] }) {
-  return (
-    <Reveal className="contentSection categoryIndex" delay={0.1} id="categorias">
-      <span className="eyebrow">Navegação editorial</span><SectionHeading title="O que você quer resolver?" />
-      <div>{groups.map((group) => <CategoryGroup group={group} key={group.index} />)}</div>
-    </Reveal>
-  );
-}
-
 function PopularArticles({ articles }: { articles: readonly PublicArticle[] }) {
   return (
     <Reveal className="contentSection popularSection" delay={0.14}>
@@ -81,5 +62,5 @@ type HomePageProps = Readonly<{
 }>;
 
 export function HomePage({ projection, products }: HomePageProps): ReactElement {
-  return <><UtilityStrip /><main><VideoCarousel videos={projection.featuredVideos} /><div className="homeGrid" id="ultimos"><LatestArticles articles={projection.latestArticles} /><CategoryIndex groups={projection.categoryGroups} /><Reveal className="contentSection homeStoreSection" delay={0.12}><HomeStoreCarousel products={products} /></Reveal><PopularArticles articles={projection.popularArticles} /></div><Newsletter /></main></>;
+  return <><UtilityStrip /><main><VideoCarousel videos={projection.featuredVideos} /><div className="homeGrid" id="ultimos"><LatestArticles articles={projection.latestArticles} /><Reveal className="contentSection homeStoreSection" delay={0.12}><HomeStoreCarousel products={products} /></Reveal><PopularArticles articles={projection.popularArticles} /></div><Newsletter /></main></>;
 }

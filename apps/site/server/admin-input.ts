@@ -1,4 +1,5 @@
 import type { ArticleDraftInput, HomeSectionInput, MenuItemInput, ProductDraftInput } from "../db/admin-contracts";
+import { articleText, parseArticleContent } from "../domain/article-content";
 import { invalidInput } from "./admin-errors";
 
 type JsonRecord = Record<string, unknown>;
@@ -42,13 +43,30 @@ function urlOrPathField(record: JsonRecord, key: string): string {
   throw invalidInput(`URL ou caminho inválido: ${key}.`);
 }
 
-function textArray(record: JsonRecord, key: string, maxItems: number): readonly string[] {
-  const value = record[key];
-  if (!Array.isArray(value) || value.length < 1 || value.length > maxItems) throw invalidInput(`Lista inválida: ${key}.`);
-  return value.map((item) => {
-    if (typeof item !== "string" || !item.trim() || item.length > 5_000) throw invalidInput(`Parágrafo inválido: ${key}.`);
-    return item.trim();
-  });
+function articleBody(record: JsonRecord): ArticleDraftInput["body"] {
+  let body: ArticleDraftInput["body"];
+  try {
+    body = parseArticleContent(record.body);
+  } catch (error) {
+    console.info("Documento editorial rejeitado.", error);
+    throw invalidInput("Conteúdo estruturado inválido.");
+  }
+  if (body.blocks.length < 1 || body.blocks.length > 120) throw invalidInput("Quantidade de blocos inválida.");
+  const imageCount = body.blocks.filter((block) => block.type === "image").length;
+  if (imageCount > 30) throw invalidInput("O artigo aceita até 30 imagens internas.");
+  for (const block of body.blocks) validateBlock(block);
+  return body;
+}
+
+function validateBlock(block: ArticleDraftInput["body"]["blocks"][number]): void {
+  if (block.type === "image") {
+    if (!/^[0-9a-f-]{20,40}$/iu.test(block.assetId)) throw invalidInput("Imagem interna inválida.");
+    if (block.alt.trim().length < 5 || block.alt.length > 240) throw invalidInput("Descrição da imagem inválida.");
+    if (block.caption && block.caption.length > 300) throw invalidInput("Legenda da imagem inválida.");
+    return;
+  }
+  const max = block.type === "heading" ? 180 : 5_000;
+  if (!block.text.trim() || block.text.length > max) throw invalidInput("Bloco de texto inválido.");
 }
 
 function faqItems(record: JsonRecord): ArticleDraftInput["faq"] {
@@ -62,8 +80,8 @@ function faqItems(record: JsonRecord): ArticleDraftInput["faq"] {
 
 export function parseArticleDraftInput(value: unknown): ArticleDraftInput {
   const record = recordValue(value);
-  const body = textArray(record, "body", 40);
-  if (body.join("\n\n").length < 100) throw invalidInput("O artigo precisa ter pelo menos 100 caracteres.");
+  const body = articleBody(record);
+  if (articleText(body).length < 100) throw invalidInput("O artigo precisa ter pelo menos 100 caracteres.");
   const youtube = record.youtubeVideoId;
   if (typeof youtube !== "string" || !/^[\w-]{6,20}$/u.test(youtube)) throw invalidInput("ID do YouTube inválido.");
   const rawArticleId = record.articleId;

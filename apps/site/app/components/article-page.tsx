@@ -8,6 +8,7 @@ import type { PublicArticle } from "@/domain/public-content";
 import { Comments } from "./comments";
 import { Reveal } from "./motion";
 import { YouTubeConsentEmbed } from "./youtube-consent-embed";
+import { ArticleBlocksRenderer } from "./article-blocks-renderer";
 
 function Breadcrumbs({ article }: { article: PublicArticle }) {
   return <nav className="breadcrumbs" aria-label="Breadcrumb"><Link href="/">Início</Link><span>/</span><Link href={`/categoria/${article.categorySlug}`}>{article.category}</Link><span>/</span><strong>Artigo</strong></nav>;
@@ -84,7 +85,7 @@ export function ArticlePage({ article, relatedArticles }: ArticlePageProps): Rea
     <main className="articlePage">
       <Reveal><ArticleIntro article={article} /></Reveal>
       <Reveal className="articleLeadImage"><Image src={article.image} alt={article.imageAlt} fill loading="eager" fetchPriority="high" sizes="(max-width: 1023px) 100vw, 980px" /></Reveal>
-      <article className="articleBody">{article.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}<Opinion text={article.opinion} /><VideoFacade article={article} /><Faq article={article} /><Related articles={relatedArticles} /><section className="articleBlock commentsBlock"><div className="articleSectionTitle"><span className="eyebrow">Comunidade</span><h2>Comentários</h2></div><Comments /></section></article>
+      <article className="articleBody"><ArticleBlocksRenderer body={article.body} /><Opinion text={article.opinion} /><VideoFacade article={article} /><Faq article={article} /><Related articles={relatedArticles} /><section className="articleBlock commentsBlock"><div className="articleSectionTitle"><span className="eyebrow">Comunidade</span><h2>Comentários</h2></div><Comments /></section></article>
     </main>
   );
 }

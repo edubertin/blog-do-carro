@@ -1,12 +1,12 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Storefront } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowRight } from "@phosphor-icons/react";
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PointerEvent, ReactElement } from "react";
 import { useCart } from "@/app/commerce/cart-provider";
-import { formatMoney, isProductId } from "@/app/commerce/catalog";
-import { SiteLink as Link } from "@/app/components/site-link";
+import { formatMoney, isPurchasableProductId } from "@/app/commerce/catalog";
+import { productAvailability } from "@/db/contracts";
 import type { CatalogProduct } from "@/db/contracts";
 
 type CarouselProps = Readonly<{ products: readonly CatalogProduct[] }>;
@@ -29,16 +29,29 @@ function useSwipe(onPrevious: () => void, onNext: () => void) {
   return { onPointerDown, onPointerUp };
 }
 
+function useCarouselVisibility(container: React.RefObject<HTMLElement | null>): boolean {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const node = container.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.35 });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [container]);
+  return visible;
+}
+
 function ProductSlide({ product, index, count, active, onAdd }: Readonly<{
   product: CatalogProduct; index: number; count: number; active: boolean; onAdd: () => void;
 }>): ReactElement {
+  const availability = productAvailability(product);
   return (
     <article className="homeStoreSlide" aria-roledescription="slide" aria-label={`${index + 1} de ${count}: ${product.name}`} aria-hidden={!active} inert={!active}>
       <div className="homeStoreImage"><Image src={product.imageUrl} alt={product.imageAlt} fill sizes="(max-width: 759px) 100vw, 520px" /></div>
       <div className="homeStoreCopy">
-        <p className="homeStoreLabel">Produto da comunidade</p><h2>{product.name}</h2>
-        <p className="homeStoreDescription">{product.description}</p><strong>{formatMoney(product.priceCents)}</strong><small>Valor demonstrativo</small>
-        <div className="homeStoreActions"><button type="button" onClick={onAdd}>Adicionar ao carrinho<ArrowRight size={18} weight="bold" aria-hidden="true" /></button><Link href="/loja">Ver detalhes</Link></div>
+        <p className="homeStoreLabel">{availability === "available" ? "Disponível na comunidade" : "Em breve"}</p>
+        <h2>{product.name}</h2><p className="homeStoreDescription">{product.description}</p>
+        {availability === "available" ? <><strong>{formatMoney(product.priceCents)}</strong><small>Compra demonstrativa</small><button className="homeStoreBuy" type="button" onClick={onAdd}>Adicionar ao carrinho<ArrowRight size={18} weight="bold" aria-hidden="true" /></button></> : <p className="homeStoreSoon">Estamos preparando os primeiros detalhes.</p>}
       </div>
     </article>
   );
@@ -47,29 +60,34 @@ function ProductSlide({ product, index, count, active, onAdd }: Readonly<{
 function CarouselControls({ products, activeIndex, goTo }: Readonly<{
   products: readonly CatalogProduct[]; activeIndex: number; goTo: (index: number) => void;
 }>): ReactElement {
-  return <div className="homeStoreControls"><button type="button" aria-label="Produto anterior" onClick={() => goTo(activeIndex - 1)}><ArrowLeft size={19} aria-hidden="true" /></button><div className="homeStoreDots" aria-label="Escolher produto">{products.map((product, index) => <button type="button" className={index === activeIndex ? "active" : ""} aria-label={`Mostrar ${product.name}`} aria-current={index === activeIndex ? "true" : undefined} onClick={() => goTo(index)} key={product.id} />)}</div><button type="button" aria-label="Próximo produto" onClick={() => goTo(activeIndex + 1)}><ArrowRight size={19} aria-hidden="true" /></button></div>;
+  return <><button className="homeStoreArrow homeStoreArrow--previous" type="button" aria-label="Produto anterior" onClick={() => goTo(activeIndex - 1)}><ArrowLeft size={19} aria-hidden="true" /></button><button className="homeStoreArrow homeStoreArrow--next" type="button" aria-label="Próximo produto" onClick={() => goTo(activeIndex + 1)}><ArrowRight size={19} aria-hidden="true" /></button><div className="homeStoreDots" aria-label="Escolher produto">{products.map((product, index) => <button type="button" className={index === activeIndex ? "active" : ""} aria-label={`Mostrar ${product.name}`} aria-current={index === activeIndex ? "true" : undefined} onClick={() => goTo(index)} key={product.id} />)}</div></>;
 }
 
 export function HomeStoreCarousel({ products }: CarouselProps): ReactElement | null {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [announcement, setAnnouncement] = useState("");
+  const [paused, setPaused] = useState(false);
+  const container = useRef<HTMLElement | null>(null);
+  const visible = useCarouselVisibility(container);
   const { addProduct } = useCart();
   const goTo = (index: number): void => setActiveIndex((index + products.length) % products.length);
   const swipe = useSwipe(() => goTo(activeIndex - 1), () => goTo(activeIndex + 1));
+  useEffect(() => {
+    if (paused || !visible || products.length < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => setActiveIndex((index) => (index + 1) % products.length), 7000);
+    return () => window.clearInterval(timer);
+  }, [paused, products.length, visible]);
   if (products.length === 0) return null;
   const activeProduct = products[activeIndex];
   const addActiveProduct = (): void => {
-    if (!isProductId(activeProduct.slug)) return setAnnouncement("Este produto ainda não pode ser adicionado ao carrinho.");
+    if (!isPurchasableProductId(activeProduct.slug) || productAvailability(activeProduct) !== "available") return;
     addProduct(activeProduct.slug, 1);
-    setAnnouncement(`${activeProduct.name} adicionado. Abrindo o carrinho.`);
     window.location.assign("/carrinho");
   };
   return (
-    <section className="homeStoreCarousel" aria-roledescription="carrossel" aria-label="Produtos da Loja da comunidade">
-      <div className="homeStoreHeading"><span className="storeBadge"><Storefront size={15} weight="fill" aria-hidden="true" />Loja da comunidade</span><span>{String(activeIndex + 1).padStart(2, "0")} / {String(products.length).padStart(2, "0")}</span></div>
-      <div className="homeStoreViewport" role="group" aria-label="Arraste para trocar de produto" {...swipe}><div className="homeStoreTrack" style={{ transform: `translateX(-${activeIndex * 100}%)` }}>{products.map((product, index) => <ProductSlide product={product} index={index} count={products.length} active={index === activeIndex} onAdd={addActiveProduct} key={product.id} />)}</div></div>
+    <section ref={container} className="homeStoreCarousel" aria-roledescription="carrossel" aria-label="Produtos da Loja da comunidade" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocusCapture={() => setPaused(true)} onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false); }}>
+      <p className="homeStoreTitle">Loja da comunidade</p>
+      <div className="homeStoreViewport" role="group" aria-label="Arraste para trocar de produto" {...swipe} onPointerDownCapture={() => setPaused(true)} onPointerUpCapture={() => setPaused(false)}><div className="homeStoreTrack" style={{ transform: `translateX(-${activeIndex * 100}%)` }}>{products.map((product, index) => <ProductSlide product={product} index={index} count={products.length} active={index === activeIndex} onAdd={addActiveProduct} key={product.id} />)}</div></div>
       <CarouselControls products={products} activeIndex={activeIndex} goTo={goTo} />
-      <p className="srOnly" aria-live="polite">{announcement}</p>
     </section>
   );
 }

@@ -312,29 +312,27 @@ img { display: block; }
 .storeWaitlist .newsletterForm { margin-top: 20px; }
 
 .homeStoreSection { grid-column: 1 / -1; }
-.homeStoreCarousel { overflow: hidden; background: #101010; border: 1px solid #2d2d2d; border-radius: var(--radius-md); box-shadow: var(--shadow); }
-.homeStoreHeading { min-height: 58px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid #292929; }
-.homeStoreHeading > span:last-child { color: #777; font-size: .59rem; font-weight: 700; letter-spacing: .12em; }
-.homeStoreViewport { overflow: hidden; touch-action: pan-y; }
+.homeStoreCarousel { position: relative; }
+.homeStoreTitle { margin-bottom: 14px; color: var(--yellow); font-size: .66rem; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+.homeStoreViewport { overflow: hidden; background: #101010; border-radius: var(--radius-md); box-shadow: var(--shadow); touch-action: pan-y; }
 .homeStoreTrack { display: flex; transition: transform .48s cubic-bezier(.22, 1, .36, 1); }
 .homeStoreSlide { min-width: 100%; display: grid; background: #131313; }
 .homeStoreImage { position: relative; min-height: 270px; aspect-ratio: 4 / 3; overflow: hidden; background: #090909; }
 .homeStoreImage img { object-fit: contain; transition: transform .45s ease; }
 .homeStoreSlide:hover .homeStoreImage img { transform: scale(1.025); }
-.homeStoreCopy { padding: 25px 20px 28px; display: flex; flex-direction: column; align-items: flex-start; }
+.homeStoreCopy { min-height: 330px; padding: 27px 48px 64px; display: flex; flex-direction: column; align-items: flex-start; }
 .homeStoreLabel { color: var(--yellow); font-size: .59rem; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
 .homeStoreCopy h2 { max-width: 14ch; margin-top: 9px; font-family: "Source Serif 4", Georgia, serif; font-size: clamp(2rem, 10vw, 3.5rem); line-height: .94; letter-spacing: -.05em; text-wrap: balance; }
 .homeStoreDescription { max-width: 46ch; margin-top: 13px; color: #aaa; font-size: .78rem; line-height: 1.58; }
 .homeStoreCopy > strong { margin-top: 22px; color: var(--white); font-size: 1.12rem; }
 .homeStoreCopy > small { margin-top: 4px; color: #777; font-size: .58rem; letter-spacing: .08em; text-transform: uppercase; }
-.homeStoreActions { width: 100%; margin-top: 22px; display: grid; gap: 5px; }
-.homeStoreActions button { min-height: 50px; padding: 0 18px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--ink); background: var(--yellow); border: 0; border-radius: 999px; font-size: .72rem; font-weight: 700; cursor: pointer; transition: background .2s ease, transform .2s ease; }
-.homeStoreActions button:hover { background: var(--yellow-strong); transform: translateY(-2px); }
-.homeStoreActions button:disabled { cursor: wait; opacity: .72; transform: none; }
-.homeStoreActions a { min-height: 44px; display: grid; place-items: center; color: #aaa; font-size: .67rem; font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
-.homeStoreControls { min-height: 58px; padding: 0 9px; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; border-top: 1px solid #292929; }
-.homeStoreControls > button { width: 44px; height: 44px; display: grid; place-items: center; color: #bbb; background: transparent; border: 0; border-radius: 50%; cursor: pointer; }
-.homeStoreDots { display: flex; align-items: center; justify-content: center; gap: 2px; }
+.homeStoreBuy { width: min(100%, 280px); min-height: 50px; margin-top: 22px; padding: 0 18px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--ink); background: var(--yellow); border: 0; border-radius: 999px; font-size: .72rem; font-weight: 700; cursor: pointer; transition: background .2s ease, transform .2s ease; }
+.homeStoreBuy:hover { background: var(--yellow-strong); transform: translateY(-2px); }
+.homeStoreSoon { margin-top: 24px; color: #d2d2d2; font-size: .72rem; font-weight: 650; }
+.homeStoreArrow { position: absolute; z-index: 2; top: calc(50% + 12px); width: 44px; height: 44px; display: grid; place-items: center; color: #eee; background: rgb(8 8 8 / 72%); border: 1px solid rgb(255 255 255 / 12%); border-radius: 50%; cursor: pointer; transform: translateY(-50%); backdrop-filter: blur(8px); }
+.homeStoreArrow--previous { left: 8px; }
+.homeStoreArrow--next { right: 8px; }
+.homeStoreDots { position: absolute; z-index: 2; right: 0; bottom: 10px; left: 0; display: flex; align-items: center; justify-content: center; gap: 2px; }
 .homeStoreDots button { width: 44px; height: 44px; display: grid; place-items: center; background: transparent; border: 0; cursor: pointer; }
 .homeStoreDots button::before { width: 22px; height: 3px; background: #3d3d3d; border-radius: 99px; content: ""; transition: width .25s ease, background .25s ease; }
 .homeStoreDots button.active::before { width: 34px; background: var(--yellow); }
@@ -394,8 +392,7 @@ img { display: block; }
   .storeWaitlist { margin: 50px 0 0; padding: 48px; text-align: center; }
   .homeStoreSlide { grid-template-columns: minmax(320px, .95fr) minmax(0, 1.05fr); min-height: 470px; }
   .homeStoreImage { min-height: 470px; aspect-ratio: auto; }
-  .homeStoreCopy { padding: 48px; justify-content: center; }
-  .homeStoreActions { max-width: 280px; }
+  .homeStoreCopy { min-height: auto; padding: 48px 58px 68px; justify-content: center; }
   .listingGrid { grid-template-columns: repeat(2, 1fr); }
   .simplePage { padding-top: 76px; }
 }
@@ -434,3 +431,7 @@ img { display: block; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+.articleInlineImage { margin: 32px 0; }
+.articleInlineImage img { width: 100%; height: auto; border-radius: 16px; }
+.articleInlineImage figcaption { margin-top: 8px; color: var(--muted); font-size: .84rem; }
+@media (min-width: 900px) { .articleInlineImage--wide { margin-inline: -80px; } }

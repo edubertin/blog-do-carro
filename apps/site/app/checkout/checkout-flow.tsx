@@ -10,7 +10,7 @@ import { SiteLink as Link } from "@/app/components/site-link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, FormEvent, ReactElement, ReactNode, RefObject, SetStateAction } from "react";
-import type { ProductId } from "@/app/commerce/catalog";
+import type { PurchasableProductId } from "@/app/commerce/catalog";
 import { useCart } from "@/app/commerce/cart-provider";
 import { formatMoney, shippingById, shippingOptions } from "@/app/commerce/catalog";
 import type { ShippingId } from "@/app/commerce/catalog";
@@ -21,7 +21,7 @@ import { commerceIntegrations } from "@/app/commerce/integration-config";
 import type { CatalogProduct } from "@/db/contracts";
 
 type CheckoutLine = Readonly<{
-  productId: ProductId;
+  productId: PurchasableProductId;
   product: CatalogProduct;
   quantity: number;
 }>;

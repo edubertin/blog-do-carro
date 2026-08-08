@@ -8,7 +8,7 @@ import { SiteLink as Link } from "@/app/components/site-link";
 import type { ReactElement } from "react";
 import { useCart } from "@/app/commerce/cart-provider";
 import { formatMoney } from "@/app/commerce/catalog";
-import type { ProductId } from "@/app/commerce/catalog";
+import type { PurchasableProductId } from "@/app/commerce/catalog";
 import { QuantityControl } from "@/app/components/commerce/quantity-control";
 import type { CatalogProduct } from "@/db/contracts";
 
@@ -40,11 +40,11 @@ export function CartPage({ products }: CartPageProps): ReactElement {
 }
 
 type CartLineProps = Readonly<{
-  productId: ProductId;
+  productId: PurchasableProductId;
   product: CatalogProduct;
   quantity: number;
-  onQuantityChange: (productId: ProductId, quantity: number) => void;
-  onRemove: (productId: ProductId) => void;
+  onQuantityChange: (productId: PurchasableProductId, quantity: number) => void;
+  onRemove: (productId: PurchasableProductId) => void;
 }>;
 
 function CartLine({ productId, product, quantity, onQuantityChange, onRemove }: CartLineProps): ReactElement {
@@ -83,5 +83,4 @@ function EmptyCart(): ReactElement {
     <div className="commerceShell emptyCommerce"><ShoppingCartSimple size={38} weight="duotone" /><span className="eyebrow">Carrinho vazio</span><h1>Seus produtos ainda nÃ£o entraram aqui.</h1><p>Escolha um item para percorrer a demonstraÃ§Ã£o completa.</p><Link className="primaryButton" href="/loja">Conhecer a loja <ArrowRight size={19} /></Link></div>
   );
 }
-
 

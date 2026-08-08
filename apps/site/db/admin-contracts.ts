@@ -1,4 +1,5 @@
 import type { ArticleRevisionState, ProductState } from "./schema";
+import type { ArticleContentDocument } from "../domain/article-content";
 
 export type ArticleDraftInput = Readonly<{
   articleId?: string;
@@ -7,7 +8,7 @@ export type ArticleDraftInput = Readonly<{
   slug: string;
   seoDescription: string;
   categorySlug: string;
-  body: readonly string[];
+  body: ArticleContentDocument;
   opinion: string;
   imageUrl: string;
   imageAlt: string;
@@ -81,4 +82,12 @@ export type MediaAssetRecord = Readonly<{
   contentType: "image/jpeg" | "image/png" | "image/webp";
   byteSize: number;
   altText: string;
+  width: number;
+  height: number;
+  sha256: string;
+}>;
+
+export type MediaLibraryAsset = MediaAssetRecord & Readonly<{
+  lifecycleState: "staged" | "published" | "archived";
+  createdAt: number;
 }>;

@@ -40,10 +40,13 @@ test("artigo só carrega o YouTube após consentimento explícito", async ({ pag
   await expect(page.locator("iframe[src*='youtube-nocookie.com']")).toHaveCount(1);
 });
 
-test("carrossel da loja na home expõe dois produtos e adição direta acessível", async ({ page }) => {
+test("home simplifica a loja e mantém apenas o chaveiro disponível", async ({ page }) => {
   await page.goto("/", { waitUntil: "networkidle" });
+  await expect(page.getByText("Navegação editorial")).toHaveCount(0);
+  await expect(page.locator("#categorias")).toHaveCount(0);
   const carousel = page.getByRole("region", { name: /loja da comunidade/i });
   await expect(carousel.getByRole("heading", { name: "Chaveiro Blog do Carro" })).toBeVisible();
+  await expect(carousel.getByText("R$ 9,90")).toBeVisible();
   await expect(carousel.getByRole("button", { name: /produto anterior/i })).toBeEnabled();
   const nextProduct = carousel.getByRole("button", { name: /próximo produto/i });
   await expect(nextProduct).toBeEnabled();
@@ -58,27 +61,34 @@ test("carrossel da loja na home expõe dois produtos e adição direta acessíve
   expect(controlBox?.width ?? 0).toBeGreaterThanOrEqual(44);
   await reloadedNext.click();
   await expect(reloadedCarousel.getByRole("heading", { name: "Miniatura Blog do Carro" })).toBeVisible();
+  await expect(reloadedCarousel.getByText("Em breve", { exact: true })).toBeVisible();
+  await expect(reloadedCarousel.getByRole("button", { name: "Adicionar ao carrinho" })).toHaveCount(0);
+  await expect(reloadedCarousel.getByRole("link")).toHaveCount(0);
 });
 
-test("carrinho persiste dois produtos e remove cada item de forma independente", async ({ page }) => {
+test("carrinho descarta produto em breve mesmo em snapshot adulterado", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("blog-do-carro-cart-v2", JSON.stringify({ version: 2, items: [
+      { productId: "chaveiro-blog-do-carro", quantity: 1 },
+      { productId: "miniatura-blog-do-carro", quantity: 1 },
+    ] }));
+    window.sessionStorage.setItem("e2e-cart-reset", "done");
+  });
+  await page.goto("/carrinho", { waitUntil: "networkidle" });
+  await expect(page.getByRole("heading", { name: "Chaveiro Blog do Carro" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Miniatura Blog do Carro" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /abrir carrinho com 1 item/i })).toBeVisible();
+});
+
+test("carrinho persiste e remove o chaveiro", async ({ page }) => {
   await page.goto("/", { waitUntil: "networkidle" });
   const carousel = page.getByRole("region", { name: /loja da comunidade/i });
   await carousel.getByRole("button", { name: "Adicionar ao carrinho" }).click();
   await page.waitForURL("/carrinho");
-  await page.goto("/", { waitUntil: "networkidle" });
-  const secondVisitCarousel = page.getByRole("region", { name: /loja da comunidade/i });
-  await secondVisitCarousel.getByRole("button", { name: /próximo produto/i }).click();
-  await secondVisitCarousel.getByRole("button", { name: "Adicionar ao carrinho" }).click();
-  await page.waitForURL("/carrinho");
-  for (const product of ["Chaveiro Blog do Carro", "Miniatura Blog do Carro"]) await expect(page.getByRole("heading", { name: product })).toBeVisible();
   await page.reload({ waitUntil: "networkidle" });
-  for (const product of ["Chaveiro Blog do Carro", "Miniatura Blog do Carro"]) await expect(page.getByRole("heading", { name: product })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Chaveiro Blog do Carro" })).toBeVisible();
   const chaveiroLine = page.getByRole("article").filter({ has: page.getByRole("heading", { name: "Chaveiro Blog do Carro" }) });
   await chaveiroLine.getByRole("button", { name: "Remover" }).click();
   await expect(page.getByRole("heading", { name: "Chaveiro Blog do Carro" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Miniatura Blog do Carro" })).toBeVisible();
-  await expect(page.getByRole("link", { name: /abrir carrinho com 1 item/i })).toBeVisible();
-  const miniaturaLine = page.getByRole("article").filter({ has: page.getByRole("heading", { name: "Miniatura Blog do Carro" }) });
-  await miniaturaLine.getByRole("button", { name: "Remover" }).click();
   await expect(page.getByText(/carrinho vazio/i)).toBeVisible();
 });
