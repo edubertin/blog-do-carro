@@ -28,12 +28,13 @@ HTML livre, scripts, URLs administrativas e código arbitrário são rejeitados.
 
 ## Experiência do editor
 
-- Pontos de inserção antes, entre e depois dos blocos adicionam texto, subtítulo ou imagem na posição escolhida.
-- No celular, os controles permanecem no fluxo do artigo e aceitam câmera, galeria ou arquivo pelo seletor nativo.
-- Durante o upload, movimentação e salvamento ficam bloqueados para preservar a posição e impedir revisões incompletas.
-- Imagem inserida pode ser substituída, movida, legendada ou removida do artigo.
+- A autoria acontece em um canvas contínuo: escrever, pressionar Enter, inserir uma imagem no cursor e continuar o texto logo abaixo.
+- A barra compacta oferece texto, H2, H3 e imagem sem exibir cartões ou controles permanentes entre os parágrafos.
+- No celular, o painel de mídia permanece no fluxo e aceita câmera, galeria ou arquivo pelo seletor nativo.
+- Durante o upload, edição e salvamento ficam bloqueados para preservar a posição e impedir revisões incompletas.
+- Imagem inserida pode ser selecionada por um controle explícito, substituída, alinhada, legendada ou removida do artigo.
 - Texto alternativo é obrigatório; legenda é opcional.
-- Mover para cima/baixo funciona por toque e teclado; drag-and-drop é apenas conveniência futura.
+- A persistência continua usando `ArticleContentDocument` v1; um adaptador estrito converte o JSON do Tiptap sem aceitar HTML, marks ou nós não autorizados.
 - O primeiro corte usa salvamento explícito com indicação de alterações não salvas.
 - Falha de upload nunca descarta texto ou outros blocos.
 
