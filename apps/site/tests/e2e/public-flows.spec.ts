@@ -15,6 +15,8 @@ test.beforeEach(async ({ page }) => {
 test("portal público funciona sem overflow e busca sem exigir acentos", async ({ page }) => {
   await page.goto("/", { waitUntil: "networkidle" });
   await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
+  const editorialCarousel = page.getByRole("region", { name: "Artigos em destaque" });
+  await expect(editorialCarousel.getByRole("link", { name: "Ler artigo" })).toHaveAttribute("href", /\/artigos\//);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
   const firstDot = page.getByRole("button", { name: /^Mostrar / }).first();
