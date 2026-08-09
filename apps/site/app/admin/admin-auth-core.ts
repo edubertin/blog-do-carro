@@ -36,6 +36,8 @@ export type AdminPermission =
   | "orders.update"
   | "customer_pii.read"
   | "analytics.read"
+  | "audience.read"
+  | "audience.manage"
   | "connectors.read"
   | "connectors.test"
   | "connectors.activate"
@@ -191,7 +193,7 @@ const allAdminPermissions = [
   "content.read", "content.write", "content.review", "content.publish",
   "home.read", "home.write", "home.publish", "catalog.read", "catalog.write",
   "catalog.activate", "orders.read", "orders.update", "customer_pii.read",
-  "analytics.read", "connectors.read", "connectors.test", "connectors.activate",
+  "analytics.read", "audience.read", "audience.manage", "connectors.read", "connectors.test", "connectors.activate",
   "flags.read", "flags.change", "admin_users.manage", "audit.read",
 ] satisfies readonly AdminPermission[];
 

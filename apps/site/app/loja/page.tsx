@@ -7,6 +7,7 @@ import { HomeStoreCarousel } from "@/app/components/commerce/home-store-carousel
 import { NewsletterForm } from "@/app/components/lead-forms";
 import { Reveal } from "@/app/components/motion";
 import { listCatalogProducts } from "@/server/public-content-service";
+import { getPublicAudienceConfig } from "@/server/runtime-bindings";
 
 export const metadata: Metadata = {
   title: "Loja da Comunidade",
@@ -26,12 +27,13 @@ function StoreValues(): ReactElement {
 
 export default async function StorePage(): Promise<ReactElement> {
   const products = await listCatalogProducts();
+  const audienceConfig = getPublicAudienceConfig();
   return (
     <main className="storePage">
-      <Reveal className="storeIntro"><span className="eyebrow">Garagem do Blog</span><h1>Loja da comunidade.</h1><p>Produtos que saem das histórias do canal e ganham vida fora da tela.</p></Reveal>
-      <Reveal className="storeCatalog" delay={0.08}><HomeStoreCarousel products={products.slice(0, 2)} /></Reveal>
+      <Reveal className="storeIntro"><span className="eyebrow">Em breve</span><h1>Loja da comunidade.</h1><p>Os primeiros produtos estão saindo da garagem. Cadastre seu interesse e seja avisado no lançamento.</p></Reveal>
+      <Reveal className="storeCatalog" delay={0.08}><HomeStoreCarousel products={products.slice(0, 2)} audienceConfig={audienceConfig} /></Reveal>
       <Reveal className="storeManifest" delay={0.12}><span className="eyebrow">Como funciona</span><h2>A comunidade chama. A gente cria.</h2><StoreValues /></Reveal>
-      <Reveal className="storeWaitlist" delay={0.14}><h2>Quer saber do próximo drop?</h2><p>Entre na lista da garagem e receba a abertura do primeiro lote.</p><NewsletterForm /></Reveal>
+      <Reveal className="storeWaitlist" id="lista" delay={0.14}><h2>Quer receber os artigos também?</h2><p>A newsletter editorial é independente dos avisos da loja.</p><NewsletterForm config={audienceConfig} /></Reveal>
     </main>
   );
 }

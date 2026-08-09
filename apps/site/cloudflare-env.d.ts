@@ -22,5 +22,13 @@ declare module "cloudflare:workers" {
     CMS_PUBLIC_READ_ENABLED?: string;
     MEDIA_UPLOAD_ENABLED?: string;
     ADMIN_SUBJECT_HMAC_KEY?: string;
+    AUDIENCE_CAPTURE_ENABLED?: string;
+    AUDIENCE_ENCRYPTION_KEY?: string;
+    AUDIENCE_LOOKUP_HMAC_KEY?: string;
+    RESEND_SEND_ENABLED?: string;
+    RESEND_API_KEY?: string;
+    RESEND_FROM_EMAIL?: string;
+    TURNSTILE_SITE_KEY?: string;
+    TURNSTILE_SECRET_KEY?: string;
   }>;
 }

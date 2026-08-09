@@ -10,6 +10,7 @@ const catalogMigrationSql = readFileSync(new URL("../drizzle/0003_community_stor
 const structuredMediaMigrationSql = readFileSync(new URL("../drizzle/0004_structured_article_media.sql", import.meta.url), "utf8");
 const storefrontMigrationSql = readFileSync(new URL("../drizzle/0005_storefront_refresh.sql", import.meta.url), "utf8");
 const pendingYouTubeMigrationSql = readFileSync(new URL("../drizzle/0006_pending_youtube_videos.sql", import.meta.url), "utf8");
+const audienceMigrationSql = readFileSync(new URL("../drizzle/0007_audience_waitlist.sql", import.meta.url), "utf8");
 const seedSql = readFileSync(new URL("../drizzle/0001_foundation_seed.sql", import.meta.url), "utf8");
 const hostingConfig = JSON.parse(readFileSync(new URL("../.openai/hosting.json", import.meta.url), "utf8"));
 
@@ -22,6 +23,7 @@ function foundationDatabase() {
   database.exec(structuredMediaMigrationSql);
   database.exec(storefrontMigrationSql);
   database.exec(pendingYouTubeMigrationSql);
+  database.exec(audienceMigrationSql);
   return database;
 }
 
@@ -169,6 +171,11 @@ test("applies the D1 foundation migration to an empty SQLite database", () => {
     "idempotency_records",
     "media_assets",
     "article_revision_media",
+    "audience_contacts",
+    "audience_subscriptions",
+    "audience_tokens",
+    "audience_consent_events",
+    "audience_request_limits",
   ]) {
     assert.ok(tables.includes(table), `missing table ${table}`);
   }
@@ -197,8 +204,8 @@ test("seeds only non-sensitive editorial and preview catalog data", () => {
   );
   assert.equal(database.prepare("SELECT active FROM menu_items WHERE href = '/#categorias'").get().active, 0);
   assert.deepEqual(
-    { ...database.prepare("SELECT mode, checkout_enabled FROM store_settings WHERE id = 1").get() },
-    { mode: "demo", checkout_enabled: 0 },
+    { ...database.prepare("SELECT mode, storefront_mode, checkout_enabled FROM store_settings WHERE id = 1").get() },
+    { mode: "demo", storefront_mode: "waitlist", checkout_enabled: 0 },
   );
   assert.equal(database.prepare("SELECT COUNT(*) AS count FROM admin_principals").get().count, 0);
 });
@@ -209,6 +216,16 @@ test("enforces catalog, publication and identity constraints", () => {
   assert.throws(() => database.exec("UPDATE product_variants SET price_cents = -1 WHERE id = 'var_chp_demo_ed01'"));
   assert.throws(() => database.exec("INSERT INTO article_revision_categories VALUES ('rev_moto_spin_001', 'cat_dicas', 1)"));
   assert.throws(() => database.exec("INSERT INTO youtube_videos VALUES ('duplicate', 'youtube', 'jT0j_rCgbbc', '@negociobaum', 'Duplicado', NULL, '/poster.png', 'detected', 0, NULL)"));
+});
+
+test("isolates encrypted audience contacts and independent consent purposes", () => {
+  const database = foundationDatabase();
+  database.exec("INSERT INTO audience_contacts (id,email_lookup_hmac,email_ciphertext,email_iv,created_at,updated_at) VALUES ('contact-1','hmac-only','ciphertext','iv',1,1)");
+  database.exec("INSERT INTO audience_subscriptions (id,contact_id,purpose,product_id,status,source_path,consent_version,consent_text_hash,requested_at,updated_at) VALUES ('sub-store','contact-1','store_launch','chaveiro-blog-do-carro','pending','/loja','v1','hash-store',1,1)");
+  database.exec("INSERT INTO audience_subscriptions (id,contact_id,purpose,product_id,status,source_path,consent_version,consent_text_hash,requested_at,updated_at) VALUES ('sub-news','contact-1','editorial_newsletter','','active','/','v1','hash-news',1,1)");
+  assert.equal(database.prepare("SELECT COUNT(*) count FROM audience_subscriptions WHERE contact_id='contact-1'").get().count, 2);
+  assert.throws(() => database.exec("INSERT INTO audience_subscriptions (id,contact_id,purpose,product_id,status,source_path,consent_version,consent_text_hash,requested_at,updated_at) VALUES ('duplicate','contact-1','editorial_newsletter','','pending','/','v1','hash',1,1)"));
+  assert.equal(database.prepare("SELECT email_ciphertext FROM audience_contacts WHERE id='contact-1'").get().email_ciphertext, "ciphertext");
 });
 
 test("keeps audit and inventory ledgers append-only", () => {

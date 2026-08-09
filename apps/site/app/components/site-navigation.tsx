@@ -9,7 +9,6 @@ import { SiteLink as Link } from "@/app/components/site-link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactElement, RefObject } from "react";
-import { CartLink } from "@/app/commerce/cart-link";
 import type {
   NavigationProjection,
   PublicCategory,
@@ -212,7 +211,7 @@ function BottomNav({ onSearch }: { onSearch: () => void }): ReactElement {
   return (
     <nav className="bottomNav" aria-label="Navegação rápida">
       <Link className={pathname === "/" ? "active" : ""} href="/"><House size={21} weight="fill" /><span>Início</span></Link>
-      <CartLink />
+      <Link href="/artigos"><SquaresFour size={21} /><span>Artigos</span></Link>
       <Link className={pathname === "/loja" ? "active" : ""} href="/loja"><SquaresFour size={21} /><span>Loja</span></Link>
       <button type="button" onClick={onSearch}><MagnifyingGlass size={21} /><span>Buscar</span></button>
     </nav>
@@ -232,7 +231,7 @@ export function SiteNavigation({ navigation }: Readonly<{ navigation: Navigation
         <div className="headerInner">
           <IconButton kind="menu" label="Abrir menu" controls="main-menu" expanded={menuOpen} onClick={openMenu} />
           <Link href="/" aria-label="Blog do Carro — início"><BrandLogo eager /></Link>
-          <div className="headerActions"><IconButton kind="search" label="Abrir busca" controls="site-search" expanded={searchOpen} onClick={openSearch} /><CartLink compact /></div>
+          <div className="headerActions"><IconButton kind="search" label="Abrir busca" controls="site-search" expanded={searchOpen} onClick={openSearch} /><Link className="headerStoreLink" href="/loja" aria-label="Loja da comunidade em breve"><SquaresFour size={22} /></Link></div>
         </div>
       </header>
       <MenuDrawer open={menuOpen} onClose={closeMenu} categories={navigation.categories} items={navigation.items} />
