@@ -93,7 +93,7 @@ img { display: block; }
 .articleRow:hover .articleThumb img { transform: scale(1.06); }
 .articleRowCopy { min-width: 0; }
 .articleCategory { color: var(--yellow); font-size: .57rem; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
-.articleRow h3 { margin-top: 6px; font-size: .89rem; line-height: 1.25; letter-spacing: -.02em; }
+.articleRow h3 { margin-top: 6px; overflow-wrap: anywhere; font-size: .89rem; line-height: 1.25; letter-spacing: -.02em; }
 .readTime { margin-top: 9px; display: flex; align-items: center; gap: 5px; color: #8f8f8f; font-size: .61rem; text-transform: uppercase; }
 .rowArrow { position: absolute; right: 0; color: #717171; transition: color .2s ease, transform .2s ease; }
 .articleRow:hover .rowArrow { color: var(--yellow); transform: translateX(3px); }
@@ -364,8 +364,12 @@ img { display: block; }
   .carouselControls { height: 60px; padding-inline: 24px; }
   .homeGrid { padding: 28px 20px 50px; }
   .contentSection { padding-inline: 0; }
-  .articleRow { grid-template-columns: 150px 1fr; }
-  .articleThumb { height: 98px; }
+  .latestSection .articleList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; border-top: 0; }
+  .latestSection .articleRow { min-width: 0; min-height: 100%; padding: 0; grid-template-columns: minmax(0, 1fr) 44px; grid-template-rows: auto 1fr; align-items: end; gap: 0; overflow: hidden; background: #101010; border: 1px solid #292929; border-radius: var(--radius-md); }
+  .latestSection .articleThumb { height: auto; aspect-ratio: 16 / 9; grid-column: 1 / -1; border-radius: 0; }
+  .latestSection .articleRowCopy { align-self: stretch; padding: 18px 4px 20px 18px; }
+  .latestSection .articleRow h3 { min-height: 2.5em; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .latestSection .rowArrow { position: static; width: 44px; height: 44px; margin: 0 7px 9px 0; display: grid; place-items: center; border: 1px solid #303030; border-radius: 50%; }
   .categoryRail { margin-inline: 0; padding-inline: 0; flex-wrap: wrap; overflow: visible; }
   .categoryIndex > .sectionHeading h2 { font-size: 2.2rem; }
   .categoryGroup nav { grid-template-columns: 1fr 1fr 1fr; }
@@ -411,6 +415,8 @@ img { display: block; }
   .videoSupport { font-size: .86rem; }
   .articleIntro h1 { font-size: 5rem; }
   .homeGrid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 20px 34px; }
+  .latestSection { grid-column: 1 / -1; }
+  .latestSection .articleList { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
   .productSpotlight, .popularSection { grid-column: 1 / -1; }
   .productSpotlight { grid-template-columns: 360px 1fr; }
   .productPage { padding: 34px 20px 80px; display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
