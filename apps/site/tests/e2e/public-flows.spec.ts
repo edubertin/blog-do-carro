@@ -16,7 +16,7 @@ test("portal público funciona sem overflow e busca sem exigir acentos", async (
   await page.goto("/", { waitUntil: "networkidle" });
   await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
   const editorialCarousel = page.getByRole("region", { name: "Artigos em destaque" });
-  await expect(editorialCarousel.getByRole("link", { name: "Ler artigo" })).toHaveAttribute("href", /\/artigos\//);
+  await expect(editorialCarousel.getByRole("link", { name: "Ler artigo", exact: true })).toHaveAttribute("href", /\/artigos\//);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
   const firstDot = page.getByRole("button", { name: /^Mostrar / }).first();
@@ -33,6 +33,56 @@ test("portal público funciona sem overflow e busca sem exigir acentos", async (
   await expect(page.getByRole("dialog", { name: "Menu principal" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "Menu principal" })).toBeHidden();
+});
+
+test("carrossel editorial navega entre artigos e preserva o destino do CTA", async ({ page }) => {
+  await page.goto("/", { waitUntil: "networkidle" });
+  const carousel = page.getByRole("region", { name: "Artigos em destaque" });
+  const dots = carousel.getByRole("button", { name: /^Mostrar artigo / });
+  await expect(dots).toHaveCount(4);
+
+  const initialCta = await carousel.getByRole("link", { name: "Ler artigo", exact: true }).getAttribute("href");
+  await dots.nth(1).click();
+  await expect(dots.nth(1)).toHaveAttribute("aria-current", "true");
+  await expect(carousel.getByRole("link", { name: "Ler artigo", exact: true })).not.toHaveAttribute("href", initialCta ?? "");
+
+  await carousel.getByRole("button", { name: "Próximo artigo" }).click();
+  await expect(dots.nth(2)).toHaveAttribute("aria-current", "true");
+  await carousel.getByRole("button", { name: "Artigo anterior" }).click();
+  await expect(dots.nth(1)).toHaveAttribute("aria-current", "true");
+
+  const cta = carousel.getByRole("link", { name: "Ler artigo", exact: true });
+  await expect(cta).toHaveCSS("background-color", "rgb(244, 180, 0)");
+  const articleHref = await cta.getAttribute("href");
+  expect(articleHref).toMatch(/^\/artigos\/[a-z0-9-]+$/);
+  await cta.click();
+  await expect(page).toHaveURL(new RegExp(`${articleHref}$`));
+});
+
+test("carrossel editorial permanece legível nos celulares prioritários", async ({ page }) => {
+  for (const viewport of [
+    { width: 360, height: 800 },
+    { width: 390, height: 844 },
+    { width: 430, height: 932 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/", { waitUntil: "networkidle" });
+    const carousel = page.getByRole("region", { name: "Artigos em destaque" });
+    await expect(carousel.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(carousel.getByRole("link", { name: "Ler artigo", exact: true })).toBeVisible();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+  }
+});
+
+test("carrossel continua operável com movimento reduzido", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/", { waitUntil: "networkidle" });
+  const carousel = page.getByRole("region", { name: "Artigos em destaque" });
+  const dots = carousel.getByRole("button", { name: /^Mostrar artigo / });
+  await dots.nth(1).click();
+  await expect(dots.nth(1)).toHaveAttribute("aria-current", "true");
+  await expect(carousel.getByRole("link", { name: "Ler artigo", exact: true })).toBeVisible();
 });
 
 test("artigo só carrega o YouTube após consentimento explícito", async ({ page }) => {

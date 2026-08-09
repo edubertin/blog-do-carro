@@ -624,6 +624,7 @@ body:has(.adminDrawerLayer[data-open="true"]) { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .adminDrawer { transition-duration: .01ms; }
 }
-.adminCoverPreview { display: block; width: 100%; height: auto; max-height: 520px; object-fit: cover; border-radius: 16px; }
+.adminCoverPreview { display: block; width: 100%; aspect-ratio: 16 / 9; max-height: 520px; object-fit: cover; object-position: center; border-radius: 16px; }
+.adminFieldHint { margin: 0; color: var(--admin-muted); font-size: .72rem; line-height: 1.5; }
 .adminMediaPlaceholder, .adminMediaWarning { margin: 0; padding: 14px 16px; border: 1px solid var(--admin-line); border-radius: 12px; color: var(--admin-muted); }
 .adminMediaWarning { border-color: rgba(244, 180, 0, .45); color: var(--admin-text); }
