@@ -11,7 +11,8 @@ import type { HomeProjection, PublicArticle } from "@/domain/public-content";
 import { NewsletterForm } from "./lead-forms";
 import { HomeStoreCarousel } from "./commerce/home-store-carousel";
 import { Reveal } from "./motion";
-import { VideoCarousel } from "./video-carousel";
+import { ArticleCarousel } from "./video-carousel";
+import type { ArticleCarouselItem } from "./video-carousel";
 
 function UtilityStrip() {
   return <div className="utilityStrip"><span>Vídeo novo no canal</span><span>Blog + análise</span></div>;
@@ -57,11 +58,17 @@ function Newsletter() {
   );
 }
 
+function carouselArticle(article: PublicArticle): ArticleCarouselItem {
+  const { slug, category, title, subtitle, dateLabel, readTime, image, imageAlt } = article;
+  return { slug, category, title, subtitle, dateLabel, readTime, image, imageAlt };
+}
+
 type HomePageProps = Readonly<{
   projection: HomeProjection;
   products: readonly CatalogProduct[];
 }>;
 
 export function HomePage({ projection, products }: HomePageProps): ReactElement {
-  return <><UtilityStrip /><main><VideoCarousel videos={projection.featuredVideos} /><div className="homeGrid" id="ultimos"><LatestArticles articles={projection.latestArticles} /><Reveal className="contentSection homeStoreSection" delay={0.12}><HomeStoreCarousel products={products} /></Reveal><PopularArticles articles={projection.popularArticles} /></div><Newsletter /></main></>;
+  const carouselArticles = projection.latestArticles.slice(0, 4).map(carouselArticle);
+  return <><UtilityStrip /><main><ArticleCarousel articles={carouselArticles} /><div className="homeGrid" id="ultimos"><LatestArticles articles={projection.latestArticles} /><Reveal className="contentSection homeStoreSection" delay={0.12}><HomeStoreCarousel products={products} /></Reveal><PopularArticles articles={projection.popularArticles} /></div><Newsletter /></main></>;
 }
