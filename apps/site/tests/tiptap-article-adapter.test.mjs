@@ -25,9 +25,20 @@ test("round-trips the supported editorial document without losing metadata", () 
   assert.deepEqual(tiptapToArticleDocument(articleDocumentToTiptap(article)), article);
 });
 
-test("preserves empty paragraphs as cursor positions", () => {
-  const source = { schemaVersion: 1, blocks: [{ id: "empty", type: "paragraph", text: "" }] };
-  assert.deepEqual(tiptapToArticleDocument(articleDocumentToTiptap(source)), source);
+test("drops transient empty text blocks before persistence", () => {
+  const source = {
+    schemaVersion: 1,
+    blocks: [
+      { id: "empty-paragraph", type: "paragraph", text: "" },
+      { id: "spaces-heading", type: "heading", level: 2, text: "   " },
+      article.blocks[2],
+      { id: "written", type: "paragraph", text: "Conteúdo válido." },
+    ],
+  };
+  assert.deepEqual(tiptapToArticleDocument(articleDocumentToTiptap(source)), {
+    schemaVersion: 1,
+    blocks: [article.blocks[2], source.blocks[3]],
+  });
 });
 
 test("preserves an image without optional caption or dimensions", () => {

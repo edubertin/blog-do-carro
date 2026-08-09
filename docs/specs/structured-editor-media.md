@@ -35,6 +35,7 @@ HTML livre, scripts, URLs administrativas e código arbitrário são rejeitados.
 - Imagem inserida pode ser selecionada por um controle explícito, substituída, alinhada, legendada ou removida do artigo.
 - Texto alternativo é obrigatório; legenda é opcional.
 - A persistência continua usando `ArticleContentDocument` v1; um adaptador estrito converte o JSON do Tiptap sem aceitar HTML, marks ou nós não autorizados.
+- Parágrafos e subtítulos vazios existem apenas como posições de escrita no canvas e são removidos do payload antes do salvamento.
 - O primeiro corte usa salvamento explícito com indicação de alterações não salvas.
 - Falha de upload nunca descarta texto ou outros blocos.
 

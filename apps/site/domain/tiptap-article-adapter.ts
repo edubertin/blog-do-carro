@@ -104,11 +104,16 @@ function parseNode(value: unknown): ArticleBlock {
   return invalidDocument();
 }
 
+function isPersistableBlock(block: ArticleBlock): boolean {
+  return block.type === "image" || block.text.trim().length > 0;
+}
+
 export function tiptapToArticleDocument(value: unknown): ArticleContentDocument {
   if (!isRecord(value) || !hasOnlyKeys(value, ROOT_KEYS) || value.type !== "doc" || !Array.isArray(value.content)) {
     invalidDocument();
   }
-  return parseArticleContent({ schemaVersion: 1, blocks: value.content.map(parseNode) });
+  const blocks = value.content.map(parseNode).filter(isPersistableBlock);
+  return parseArticleContent({ schemaVersion: 1, blocks });
 }
 
 function textNode(text: string): TiptapTextContent | undefined {

@@ -135,15 +135,15 @@ test("editor insere imagem no ponto escolhido e preserva a ordem", async ({ page
   await expect(page.getByRole("img", { name: "Imagem posicionada entre os parágrafos" })).toBeVisible();
   const bodyJson = await page.locator('[name="bodyJson"]').inputValue();
   const document = JSON.parse(bodyJson) as { blocks: Array<{ type: string; assetId?: string; text?: string }> };
-  expect(document.blocks.map((block) => block.type)).toEqual(["paragraph", "image", "paragraph", "paragraph"]);
+  expect(document.blocks.map((block) => block.type)).toEqual(["paragraph", "image", "paragraph"]);
   expect(document.blocks[0]?.text).toBe("Primeiro parágrafo do artigo.");
   expect(document.blocks[1]?.assetId).toBe(inlineAssetId);
-  expect(document.blocks[2]?.text).toBe("");
-  expect(document.blocks[3]?.text).toBe("Segundo parágrafo do artigo.");
+  expect(document.blocks[2]?.text).toBe("Segundo parágrafo do artigo.");
   await expect(canvas).toBeFocused();
   await canvas.pressSequentially("Continuação após a imagem.");
   const continued = JSON.parse(await page.locator('[name="bodyJson"]').inputValue()) as { blocks: Array<{ text?: string }> };
   expect(continued.blocks[2]?.text).toBe("Continuação após a imagem.");
+  expect(continued.blocks[3]?.text).toBe("Segundo parágrafo do artigo.");
   await page.getByRole("button", { name: "Editar imagem" }).click();
   await expect(page.getByRole("region", { name: "Editar imagem" })).toBeVisible();
   const replaceInput = page.getByLabel("Substituir arquivo da imagem");
