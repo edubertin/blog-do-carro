@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import { listCatalogProducts } from "@/server/public-content-service";
-import { CheckoutFlow } from "./checkout-flow";
+import { StoreClosed } from "@/app/components/commerce/store-closed";
 
 export const metadata: Metadata = {
   title: "Checkout demonstrativo",
@@ -10,7 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default async function CheckoutRoute(): Promise<ReactElement> {
-  const products = await listCatalogProducts();
-  if (products.length === 0) notFound();
-  return <main className="commercePage"><CheckoutFlow catalogProducts={products} /></main>;
+  return <main className="commercePage"><StoreClosed /></main>;
 }

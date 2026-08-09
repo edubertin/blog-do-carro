@@ -102,7 +102,8 @@ Categorias sem artigos publicados exibem um estado vazio honesto. Nenhum artigo 
 ### Fase 2 — crescimento e comunidade
 
 - Busca indexada e analytics first-party de conteúdo.
-- Newsletter real com consentimento e descadastro.
+- Newsletter e interesse na loja com consentimentos independentes, double opt-in, D1 cifrado, Turnstile e Resend.
+- Painel `/admin/audiencia` separado do Analytics; métricas agregadas nunca expõem e-mail.
 - Comentários com moderação e proteção contra abuso.
 - Cadastro, favoritos e preferências do leitor.
 

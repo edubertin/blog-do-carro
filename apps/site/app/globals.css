@@ -153,6 +153,18 @@ img { display: block; }
 .newsletterDemo { display: grid; justify-items: center; }
 .newsletterDemo > small { margin-top: 9px; color: rgb(13 13 13 / 70%); font-size: .62rem; }
 .formSuccess { min-height: 54px; margin-top: 24px; display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
+.formError { color: #ffb4a8; font-size: .72rem; line-height: 1.5; }
+.audienceForm { width: min(100%, 520px); margin-top: 24px; display: grid; gap: 14px; }
+.audienceEmail { display: grid; gap: 7px; color: #aaa; font-size: .68rem; font-weight: 700; }
+.audienceEmail > span:last-child { min-height: 50px; padding: 0 14px; display: flex; align-items: center; gap: 9px; color: #666; background: #fff; border-radius: 12px; }
+.audienceEmail input { width: 100%; border: 0; outline: 0; color: var(--ink); background: transparent; font-size: .82rem; }
+.audienceForm .primaryButton { width: 100%; }
+.audienceForm .formDisclosure { padding: 11px 13px; color: #bca65f; background: #29220f; border: 1px solid #584817; border-radius: 10px; }
+.audienceForm--compact { margin-inline: auto; }
+.newsletter .audienceEmail, .storeWaitlist .audienceEmail { color: rgb(13 13 13 / 75%); }
+.newsletter .consentField, .storeWaitlist .consentField { color: rgb(13 13 13 / 78%); text-align: left; }
+.newsletter .audienceForm .formDisclosure, .storeWaitlist .audienceForm .formDisclosure { color: #3b310f; background: rgb(255 255 255 / 38%); border-color: rgb(13 13 13 / 18%); }
+.turnstileSlot { min-height: 65px; overflow: hidden; }
 
 .siteFooter { padding: 42px 18px calc(105px + env(safe-area-inset-bottom)); color: #8d8d8d; background: #080808; border-top: 1px solid #222; }
 .footerBrand .brandLogo { width: 170px; }
@@ -336,6 +348,12 @@ img { display: block; }
 .homeStoreBuy { width: min(100%, 280px); min-height: 50px; margin-top: 22px; padding: 0 18px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--ink); background: var(--yellow); border: 0; border-radius: 999px; font-size: .72rem; font-weight: 700; cursor: pointer; transition: background .2s ease, transform .2s ease; }
 .homeStoreBuy:hover { background: var(--yellow-strong); transform: translateY(-2px); }
 .homeStoreSoon { margin-top: 24px; color: #d2d2d2; font-size: .72rem; font-weight: 650; }
+.homeStoreInterest { width: min(100%, 430px); margin-top: 20px; }
+.homeStoreInterest summary { min-height: 50px; padding: 0 18px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--ink); background: var(--yellow); border-radius: 999px; font-size: .72rem; font-weight: 750; cursor: pointer; list-style: none; }
+.homeStoreInterest summary::-webkit-details-marker { display: none; }
+.homeStoreInterest[open] summary { border-radius: 18px 18px 8px 8px; }
+.homeStoreInterest .audienceForm { padding: 18px; margin-top: 8px; background: #0b0b0b; border: 1px solid #303030; border-radius: 10px; }
+.headerStoreLink { width: 44px; height: 44px; display: grid; place-items: center; color: var(--white); border-radius: 50%; }
 .homeStoreArrow { position: absolute; z-index: 2; top: calc(50% + 12px); width: 44px; height: 44px; display: grid; place-items: center; color: #eee; background: rgb(8 8 8 / 72%); border: 1px solid rgb(255 255 255 / 12%); border-radius: 50%; cursor: pointer; transform: translateY(-50%); backdrop-filter: blur(8px); }
 .homeStoreArrow--previous { left: 8px; }
 .homeStoreArrow--next { right: 8px; }

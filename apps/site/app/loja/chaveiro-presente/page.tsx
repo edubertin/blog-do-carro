@@ -6,9 +6,10 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { SiteLink as Link } from "@/app/components/site-link";
 import type { ReactElement } from "react";
-import { ProductPurchasePanel } from "@/app/components/commerce/product-purchase-panel";
+import { StoreInterestForm } from "@/app/components/lead-forms";
 import { Reveal } from "@/app/components/motion";
 import { getCatalogProduct } from "@/server/public-content-service";
+import { getPublicAudienceConfig } from "@/server/runtime-bindings";
 
 export const metadata: Metadata = {
   title: "Chaveiro Blog do Carro",
@@ -29,9 +30,9 @@ export default async function ProductPage(): Promise<ReactElement> {
     <main className="productPage">
       <Reveal className="productGallery"><Image src={product.imageUrl} alt={product.imageAlt} fill loading="eager" fetchPriority="high" sizes="(max-width: 1023px) 100vw, 50vw" /></Reveal>
       <Reveal className="productDetails" delay={0.08}>
-        <Link className="backLink" href="/loja">← Voltar à loja</Link><span className="eyebrow">{product.collectionName}</span><h1>{product.name}</h1><p className="productLead">{product.description}</p><p className="validationNotice">Compra simulada — nenhuma cobrança, etiqueta ou envio será realizado.</p>
+        <Link className="backLink" href="/loja">← Voltar à loja</Link><span className="eyebrow">{product.collectionName}</span><h1>{product.name}</h1><p className="productLead">{product.description}</p><p className="validationNotice">Loja em pré-lançamento — cadastre seu interesse para ser avisado quando as vendas abrirem.</p>
         <div className="benefitList">{benefits.map(([Icon, title, text]) => <div key={title}><Icon size={22} weight="fill" /><p><strong>{title}</strong><span>{text}</span></p></div>)}</div>
-        <ProductPurchasePanel product={product} />
+        <StoreInterestForm config={getPublicAudienceConfig()} productId={product.slug} />
       </Reveal>
     </main>
   );

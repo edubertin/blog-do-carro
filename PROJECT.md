@@ -13,7 +13,8 @@
 - Active phase: homologação editorial em produção, com editor de blocos, mídia própria e recuperação de revisões.
 - Production status: portal público no Sites; leitura pública D1 e escritas CMS estão ativas, protegidas por autorização server-side e projeção publicada.
 - Media status: binding R2, upload e entrega pública estão ativos por flags independentes; mídias `staged` continuam privadas e somente revisões publicadas promovem seus assets.
-- Commerce status: catálogo e checkout são demonstrativos, sem cobrança, pedido persistente ou envio. O chaveiro custa `R$ 9,90`; a miniatura permanece `coming_soon` e não pode entrar no carrinho.
+- Commerce status: catálogo preservado em `waitlist`, sem cobrança, pedido persistente ou envio. O chaveiro mantém preço planejado de `R$ 9,90`; a miniatura permanece `coming_soon`.
+- Audience status: fundação D1, double opt-in, painel e adaptador Resend preparados com flags desligadas; nenhum e-mail é capturado antes da configuração segura de DNS, secrets e Turnstile.
 - Open decisions: datas oficiais dos quatro vídeos, separação física do futuro D1 comercial/PII e homologação de mídia R2 e conectores.
 
 ## Recorded Decisions
@@ -81,6 +82,6 @@
 ## Safety
 
 - Secrets: somente variáveis de ambiente/bindings; nunca em Git ou D1.
-- User data: o protótipo não deve persistir dados pessoais.
+- User data: PII somente pode ser persistida cifrada e após ativação explícita das flags de audiência; secrets permanecem exclusivamente no Sites.
 - Generated outputs: ficam nos diretórios ignorados.
 - Release gates: QA aprovado, revisão visual, auditoria de dependências de produção, escopo Git conferido e autorização explícita para publicar.

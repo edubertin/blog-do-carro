@@ -13,7 +13,7 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern .vinext --ignore-pattern .wrangler",
     "typecheck": "tsc --noEmit --incremental false",
     "test": "npm run build && npm run test:unit && npm run test:db && npm run test:rendered",
-    "test:unit": "node --test tests/tiptap-article-adapter.test.mjs",
+    "test:unit": "node --test tests/tiptap-article-adapter.test.mjs tests/audience-domain.test.mjs",
     "test:db": "node --test tests/database-foundation.test.mjs",
     "test:rendered": "node --import ./tests/cloudflare-workers-loader.mjs --test tests/rendered-html.test.mjs tests/editorial-integration.test.mjs",
     "test:e2e": "npm run build && playwright test",

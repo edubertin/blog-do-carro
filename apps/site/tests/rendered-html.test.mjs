@@ -204,15 +204,16 @@ const htmlRoutes = [
   ["/categoria/negociacoes", /Conteúdo direto/i],
   ["/categoria/sedan", /Garagem em preparação/i],
   ["/loja", /Chaveiro Blog do Carro/i],
-  ["/carrinho", /Preparando seu carrinho/i],
-  ["/checkout", /Checkout demonstrativo/i],
+  ["/carrinho", /As vendas ainda não começaram/i],
+  ["/checkout", /As vendas ainda não começaram/i],
   ["/sobre", /Informação com contexto/i],
   ["/contato", /Contato editorial/i],
   ["/marketplace", /Em preparação/i],
-  ["/privacidade", /Dados locais do mock/i],
+  ["/privacidade", /Interesse na loja e newsletter/i],
   ["/termos", /Escopo atual/i],
   ["/admin", /Hoje na garagem/i],
   ["/admin/analytics", /Sinais, não vaidade/i],
+  ["/admin/audiencia", /Consentimento, não lista solta/i],
   ["/admin/artigos", /A pauta nasce do vídeo/i],
   ["/admin/artigos/novo", /Novo artigo/i],
   ["/admin/home", /Composição da home/i],
@@ -227,6 +228,29 @@ const htmlRoutes = [
 async function fetchRoute(worker, path, customEnvironment = environment) {
   return worker.fetch(new Request(`http://localhost${path}`), customEnvironment, context);
 }
+
+test("keeps audience capture fail-closed without protected runtime configuration", async () => {
+  const worker = await loadWorker();
+  const request = new Request("http://localhost/api/public/subscriptions", {
+    method: "POST",
+    headers: { Origin: "http://localhost", "Content-Type": "application/json" },
+    body: JSON.stringify({ email: "pessoa@example.com", purpose: "editorial_newsletter", sourcePath: "/", consent: true, turnstileToken: "test-token-long-enough" }),
+  });
+  const response = await worker.fetch(request, environment, context);
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { error: "A lista ainda não está disponível." });
+});
+
+test("rejects oversized audience payloads even without a content-length header", async () => {
+  const worker = await loadWorker();
+  const request = new Request("http://localhost/api/public/subscriptions", {
+    method: "POST",
+    headers: { Origin: "http://localhost", "Content-Type": "application/json" },
+    body: JSON.stringify({ email: `${"a".repeat(8_300)}@example.com` }),
+  });
+  const response = await worker.fetch(request, environment, context);
+  assert.equal(response.status, 413);
+});
 
 test("server-renders the public route matrix", async (contextTest) => {
   const worker = await loadWorker();

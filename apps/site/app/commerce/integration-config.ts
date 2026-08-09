@@ -4,3 +4,5 @@ export const commerceIntegrations = {
   meuEnvio: false,
   persistentOrders: false,
 } as const;
+
+export const storefrontMode = "waitlist" as const;

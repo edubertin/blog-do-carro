@@ -92,7 +92,7 @@ test("artigo só carrega o YouTube após consentimento explícito", async ({ pag
   await expect(page.locator("iframe[src*='youtube-nocookie.com']")).toHaveCount(1);
 });
 
-test("home simplifica a loja e mantém apenas o chaveiro disponível", async ({ page }) => {
+test("home preserva os produtos e fecha a loja em modo de interesse", async ({ page }) => {
   await page.goto("/", { waitUntil: "networkidle" });
   await expect(page.getByText("Navegação editorial")).toHaveCount(0);
   await expect(page.locator("#categorias")).toHaveCount(0);
@@ -102,23 +102,24 @@ test("home simplifica a loja e mantém apenas o chaveiro disponível", async ({ 
   await expect(carousel.getByRole("button", { name: /produto anterior/i })).toBeEnabled();
   const nextProduct = carousel.getByRole("button", { name: /próximo produto/i });
   await expect(nextProduct).toBeEnabled();
-  await carousel.getByRole("button", { name: "Adicionar ao carrinho" }).click();
-  await page.waitForURL("/carrinho");
-  await expect(page.getByRole("heading", { name: "Chaveiro Blog do Carro" })).toBeVisible();
-  await page.goto("/");
-  const reloadedCarousel = page.getByRole("region", { name: /loja da comunidade/i });
+  const activeProduct = carousel.locator(".homeStoreSlide[aria-hidden='false']");
+  await expect(activeProduct.getByText(/preço planejado/i)).toBeVisible();
+  await expect(activeProduct.getByText("Avise-me no lançamento")).toBeVisible();
+  await expect(carousel.getByRole("button", { name: "Adicionar ao carrinho" })).toHaveCount(0);
+  const reloadedCarousel = carousel;
   const reloadedNext = reloadedCarousel.getByRole("button", { name: /próximo produto/i });
   const controlBox = await reloadedNext.boundingBox();
   expect(controlBox?.height ?? 0).toBeGreaterThanOrEqual(44);
   expect(controlBox?.width ?? 0).toBeGreaterThanOrEqual(44);
   await reloadedNext.click();
-  await expect(reloadedCarousel.getByRole("heading", { name: "Miniatura Blog do Carro" })).toBeVisible();
-  await expect(reloadedCarousel.getByText("Em breve", { exact: true })).toBeVisible();
+  const nextActiveProduct = reloadedCarousel.locator(".homeStoreSlide[aria-hidden='false']");
+  await expect(nextActiveProduct.getByRole("heading", { name: "Miniatura Blog do Carro" })).toBeVisible();
+  await expect(nextActiveProduct.getByText("Produto em desenvolvimento.")).toBeVisible();
   await expect(reloadedCarousel.getByRole("button", { name: "Adicionar ao carrinho" })).toHaveCount(0);
   await expect(reloadedCarousel.getByRole("link")).toHaveCount(0);
 });
 
-test("carrinho descarta produto em breve mesmo em snapshot adulterado", async ({ page }) => {
+test("carrinho permanece fechado durante o pré-lançamento", async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem("blog-do-carro-cart-v2", JSON.stringify({ version: 2, items: [
       { productId: "chaveiro-blog-do-carro", quantity: 1 },
@@ -127,20 +128,12 @@ test("carrinho descarta produto em breve mesmo em snapshot adulterado", async ({
     window.sessionStorage.setItem("e2e-cart-reset", "done");
   });
   await page.goto("/carrinho", { waitUntil: "networkidle" });
-  await expect(page.getByRole("heading", { name: "Chaveiro Blog do Carro" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Miniatura Blog do Carro" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: /abrir carrinho com 1 item/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /vendas ainda não começaram/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /conhecer os produtos/i })).toHaveAttribute("href", "/loja#lista");
 });
 
-test("carrinho persiste e remove o chaveiro", async ({ page }) => {
-  await page.goto("/", { waitUntil: "networkidle" });
-  const carousel = page.getByRole("region", { name: /loja da comunidade/i });
-  await carousel.getByRole("button", { name: "Adicionar ao carrinho" }).click();
-  await page.waitForURL("/carrinho");
-  await page.reload({ waitUntil: "networkidle" });
-  await expect(page.getByRole("heading", { name: "Chaveiro Blog do Carro" })).toBeVisible();
-  const chaveiroLine = page.getByRole("article").filter({ has: page.getByRole("heading", { name: "Chaveiro Blog do Carro" }) });
-  await chaveiroLine.getByRole("button", { name: "Remover" }).click();
-  await expect(page.getByRole("heading", { name: "Chaveiro Blog do Carro" })).toHaveCount(0);
-  await expect(page.getByText(/carrinho vazio/i)).toBeVisible();
+test("checkout permanece fechado durante o pré-lançamento", async ({ page }) => {
+  await page.goto("/checkout", { waitUntil: "networkidle" });
+  await expect(page.getByRole("heading", { name: /vendas ainda não começaram/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /conhecer os produtos/i })).toBeVisible();
 });

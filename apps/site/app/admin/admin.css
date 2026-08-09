@@ -540,6 +540,16 @@ body:has(.adminDrawerLayer[data-open="true"]) { overflow: hidden; }
 .adminConnectorHero h2 { font-size: 1.25rem; }
 .adminConnectorHero p { color: var(--admin-muted); font-size: .7rem; line-height: 1.55; }
 .adminStateGrid { margin-top: 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+
+.audienceAdminTabs { display: flex; gap: 8px; margin: 14px 0 18px; }
+.audienceAdminTabs a { min-height: 44px; display: inline-flex; align-items: center; padding: 0 16px; border: 1px solid var(--admin-border); border-radius: 999px; color: var(--admin-muted); font-weight: 800; text-decoration: none; }
+.audienceAdminTabs a[aria-current="page"] { border-color: var(--brand); background: var(--brand); color: #0d0d0d; }
+.audienceAdminList { display: grid; border-top: 1px solid var(--admin-border); }
+.audienceAdminList article { min-width: 0; display: flex; justify-content: space-between; gap: 18px; padding: 14px 0; border-bottom: 1px solid var(--admin-border); }
+.audienceAdminList article > div { min-width: 0; display: grid; gap: 5px; }
+.audienceAdminList article > div:last-child { justify-items: end; }
+.audienceAdminList strong, .audienceAdminList span { overflow-wrap: anywhere; }
+.audienceAdminList time { color: var(--admin-muted); font-size: .76rem; }
 .adminStateCell { min-width: 0; padding: 12px; background: #101010; border: 1px solid #292929; border-radius: 13px; }
 .adminStateCell span { display: block; color: #777; font-size: .55rem; text-transform: uppercase; }
 .adminStateCell strong { display: block; margin-top: 5px; font-size: .66rem; overflow-wrap: anywhere; }

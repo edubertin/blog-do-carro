@@ -2,9 +2,9 @@
 
 ## Objetivo
 
-Validar a experiência demonstrativa do chaveiro antes de conectar autenticação, pagamento, logística ou persistência de pedidos. A miniatura permanece apenas como antecipação `coming_soon`.
+Preservar a experiência demonstrativa já validada para reativação futura. Durante o pré-lançamento público, a loja opera em `waitlist`: produtos e imagens continuam visíveis, mas compra, carrinho e checkout ficam fechados.
 
-O fluxo é deliberadamente demonstrativo. Nenhuma tela pode criar cobrança, etiqueta, rastreio, pedido persistente ou envio.
+Nenhuma tela pública pode criar cobrança, etiqueta, rastreio, pedido persistente ou envio. O CTA público é `Avise-me no lançamento`, com consentimento específico e confirmação por e-mail.
 
 ## Fluxo implementado
 

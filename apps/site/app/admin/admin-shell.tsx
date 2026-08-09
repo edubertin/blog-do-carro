@@ -13,6 +13,7 @@ import { ShoppingCart } from "@phosphor-icons/react/ShoppingCart";
 import { SignOut } from "@phosphor-icons/react/SignOut";
 import { Storefront } from "@phosphor-icons/react/Storefront";
 import { X } from "@phosphor-icons/react/X";
+import { UsersThree } from "@phosphor-icons/react/UsersThree";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { ReactElement, ReactNode } from "react";
@@ -27,6 +28,7 @@ const navGroups: readonly NavGroup[] = [
   { label: "Visão geral", items: [
     { label: "Central", href: "/admin", icon: <Gauge size={20} /> },
     { label: "Analytics", href: "/admin/analytics", icon: <ChartLineUp size={20} /> },
+    { label: "Audiência", href: "/admin/audiencia", icon: <UsersThree size={20} /> },
   ] },
   { label: "Conteúdo", items: [
     { label: "Artigos", href: "/admin/artigos", icon: <Article size={20} /> },

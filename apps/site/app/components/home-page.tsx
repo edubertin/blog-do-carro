@@ -9,6 +9,7 @@ import type { ReactElement } from "react";
 import type { CatalogProduct } from "@/db/contracts";
 import type { HomeProjection, PublicArticle } from "@/domain/public-content";
 import { NewsletterForm } from "./lead-forms";
+import type { AudiencePublicConfig } from "./lead-forms";
 import { HomeStoreCarousel } from "./commerce/home-store-carousel";
 import { Reveal } from "./motion";
 import { ArticleCarousel } from "./video-carousel";
@@ -50,10 +51,10 @@ function PopularArticles({ articles }: { articles: readonly PublicArticle[] }) {
   );
 }
 
-function Newsletter() {
+function Newsletter({ config }: Readonly<{ config: AudiencePublicConfig }>) {
   return (
     <Reveal className="newsletter" delay={0.16}>
-      <span className="eyebrow">Direto ao ponto</span><h2>A informação que ajuda você a fazer negócio.</h2><p>Receba as análises de cada vídeo novo, sem ruído.</p><NewsletterForm />
+      <span className="eyebrow">Direto ao ponto</span><h2>A informação que ajuda você a fazer negócio.</h2><p>Receba os novos artigos e análises do Blog do Carro, sem ruído.</p><NewsletterForm config={config} />
     </Reveal>
   );
 }
@@ -66,9 +67,10 @@ function carouselArticle(article: PublicArticle): ArticleCarouselItem {
 type HomePageProps = Readonly<{
   projection: HomeProjection;
   products: readonly CatalogProduct[];
+  audienceConfig: AudiencePublicConfig;
 }>;
 
-export function HomePage({ projection, products }: HomePageProps): ReactElement {
+export function HomePage({ projection, products, audienceConfig }: HomePageProps): ReactElement {
   const carouselArticles = projection.latestArticles.slice(0, 4).map(carouselArticle);
-  return <><UtilityStrip /><main><ArticleCarousel articles={carouselArticles} /><div className="homeGrid" id="ultimos"><LatestArticles articles={projection.latestArticles} /><Reveal className="contentSection homeStoreSection" delay={0.12}><HomeStoreCarousel products={products} /></Reveal><PopularArticles articles={projection.popularArticles} /></div><Newsletter /></main></>;
+  return <><UtilityStrip /><main><ArticleCarousel articles={carouselArticles} /><div className="homeGrid" id="ultimos"><LatestArticles articles={projection.latestArticles} /><Reveal className="contentSection homeStoreSection" delay={0.12}><HomeStoreCarousel products={products} audienceConfig={audienceConfig} /></Reveal><PopularArticles articles={projection.popularArticles} /></div><Newsletter config={audienceConfig} /></main></>;
 }

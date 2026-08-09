@@ -3,6 +3,7 @@ export const articleRevisionStates = ["draft", "review", "scheduled", "published
 export const productStates = ["draft", "preview", "active", "archived"] as const;
 export const inventoryStates = ["untracked", "available", "reserved", "unavailable"] as const;
 export const storeModes = ["demo", "live"] as const;
+export const storefrontModes = ["waitlist", "demo", "live"] as const;
 
 export type ArticleLifecycleState = typeof articleLifecycleStates[number];
 export type ArticleRevisionState = typeof articleRevisionStates[number];
@@ -41,6 +42,11 @@ export const databaseTables = [
   { name: "inventory_balances", domain: "catalog", classification: "operational", activation: "commerce" },
   { name: "inventory_movements", domain: "catalog", classification: "operational", activation: "commerce" },
   { name: "store_settings", domain: "catalog", classification: "operational", activation: "foundation" },
+  { name: "audience_contacts", domain: "commerce", classification: "encrypted_pii", activation: "commerce" },
+  { name: "audience_subscriptions", domain: "commerce", classification: "operational", activation: "commerce" },
+  { name: "audience_tokens", domain: "commerce", classification: "security_metadata", activation: "commerce" },
+  { name: "audience_consent_events", domain: "commerce", classification: "security_metadata", activation: "commerce" },
+  { name: "audience_request_limits", domain: "commerce", classification: "security_metadata", activation: "commerce" },
   { name: "media_assets", domain: "editorial", classification: "operational", activation: "editorial" },
   { name: "article_revision_media", domain: "editorial", classification: "operational", activation: "editorial" },
   { name: "admin_principals", domain: "control", classification: "security_metadata", activation: "editorial" },
@@ -64,8 +70,8 @@ export const deferredCommerceTables = [
 ] as const;
 
 export const databaseSchema = {
-  version: 5,
-  migration: "0005_storefront_refresh.sql",
+  version: 7,
+  migration: "0007_audience_waitlist.sql",
   seed: "0001_foundation_seed.sql",
   bindingsDeclared: true,
   publicReadsEnabledByDefault: false,
