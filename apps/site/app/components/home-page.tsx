@@ -34,7 +34,7 @@ function ArticleRow({ article }: { article: PublicArticle }) {
 
 function LatestArticles({ articles }: { articles: readonly PublicArticle[] }) {
   return (
-    <Reveal className="contentSection" delay={0.08}>
+    <Reveal className="contentSection latestSection" delay={0.08}>
       <SectionHeading title="Agora no Blog" />
       <div className="articleList">{articles.slice(0, 3).map((article) => <ArticleRow article={article} key={article.slug} />)}</div>
     </Reveal>
