@@ -169,7 +169,7 @@ export const demoOrders = [
 ] as const;
 
 export const homeSections = [
-  { id: "home_hero", position: "01", name: "Vídeo em destaque", detail: "Carrossel com os quatro vídeos mais recentes", status: "Publicado" },
+  { id: "home_hero", position: "01", name: "Artigos em destaque", detail: "Carrossel com até quatro artigos publicados", status: "Publicado" },
   { id: "home_latest", position: "02", name: "Agora no Blog", detail: "Três artigos com maior prioridade editorial", status: "Publicado" },
   { id: "home_categories", position: "03", name: "Categorias", detail: "Navegação agrupada por missão do leitor", status: "Publicado" },
   { id: "home_store", position: "04", name: "Loja da comunidade", detail: "Chaveiro e miniatura 3D", status: "Publicado" },
