@@ -550,6 +550,12 @@ body:has(.adminDrawerLayer[data-open="true"]) { overflow: hidden; }
 .audienceAdminList article > div:last-child { justify-items: end; }
 .audienceAdminList strong, .audienceAdminList span { overflow-wrap: anywhere; }
 .audienceAdminList time { color: var(--admin-muted); font-size: .76rem; }
+.emailPreviewNotice { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 18px; padding: 15px 17px; border: 1px solid color-mix(in srgb, var(--brand) 35%, var(--admin-border)); border-radius: 12px; background: color-mix(in srgb, var(--brand) 7%, transparent); }
+.emailPreviewNotice strong { color: var(--brand); }
+.emailPreviewNotice span { color: var(--admin-muted); line-height: 1.5; }
+.emailPreviewGrid { display: grid; gap: 18px; }
+.emailPreviewCard { min-width: 0; overflow: hidden; }
+.emailPreviewFrame { width: 100%; min-height: 760px; margin-top: 18px; border: 1px solid var(--admin-border); border-radius: 12px; background: #f2f2f2; }
 .adminStateCell { min-width: 0; padding: 12px; background: #101010; border: 1px solid #292929; border-radius: 13px; }
 .adminStateCell span { display: block; color: #777; font-size: .55rem; text-transform: uppercase; }
 .adminStateCell strong { display: block; margin-top: 5px; font-size: .66rem; overflow-wrap: anywhere; }
@@ -603,6 +609,8 @@ body:has(.adminDrawerLayer[data-open="true"]) { overflow: hidden; }
   .adminConnectorButton { min-width: 0; }
   .adminConnectorDetail { position: sticky; top: 90px; }
   .adminCard { padding: 22px; }
+  .emailPreviewGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .emailPreviewCard:last-child { grid-column: 1 / -1; }
   .adminRevisionHistory { padding: 22px; }
   .adminRevisionIntro { grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr); align-items: end; }
   .adminRevisionIntro > p { justify-self: end; text-align: right; }

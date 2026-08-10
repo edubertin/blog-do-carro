@@ -4,13 +4,13 @@
 
 - Product: Blog do Carro.
 - Repository: `Edubertin/blog-do-carro`.
-- Status: portal público em produção pelo Sites, com CMS editorial protegido e catálogo demonstrativo.
+- Status: desenvolvimento pausado em 10 de agosto de 2026; portal público preservado no Sites como demonstração, com CMS protegido e catálogo conceitual.
 - Audience: público brasileiro interessado em compra, venda e negociação de veículos; 87% de uso esperado em smartphones.
 - Business goal: transformar os vídeos do canal Deu Negócio em um portal editorial e, depois, em comunidade, loja e marketplace.
 
 ## Current State
 
-- Active phase: homologação editorial em produção, com editor de blocos, mídia própria e recuperação de revisões.
+- Active phase: congelamento e preservação pública. Não há roadmap de implementação ativo até a retomada formal do projeto.
 - Production status: portal público no Sites; leitura pública D1 e escritas CMS estão ativas, protegidas por autorização server-side e projeção publicada.
 - Media status: binding R2, upload e entrega pública estão ativos por flags independentes; mídias `staged` continuam privadas e somente revisões publicadas promovem seus assets.
 - Commerce status: catálogo preservado em `waitlist`, sem cobrança, pedido persistente ou envio. O chaveiro mantém preço planejado de `R$ 9,90`; a miniatura permanece `coming_soon`.

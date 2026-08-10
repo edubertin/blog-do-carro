@@ -50,3 +50,9 @@ Os valores nunca chegam ao painel, Git ou D1.
 ## Autenticação de clientes
 
 O `EmailProvider` será reutilizado pelo Better Auth após o spike Vinext/Worker/D1. Magic links usarão o fluxo transacional, sem Topics de marketing. `CUSTOMER_ACCOUNTS_MODE` permanece `disabled` até existirem pedidos reais.
+
+## Templates e preview
+
+Um shell visual reutilizável gera três mensagens independentes: confirmação editorial, confirmação de interesse na loja e magic link do cliente. Os templates retornam HTML compatível com clientes de e-mail e alternativa em texto simples. A galeria protegida `/admin/emails` usa fixtures e nunca chama o Resend.
+
+O checklist operacional e o ponto exato de retomada do DNS ficam em `docs/RESEND_SETUP_CHECKLIST.md`. O envio permanece pausado até a homologação em Gmail e Outlook.

@@ -9,6 +9,7 @@ import type { AudiencePurpose } from "@/domain/audience";
 import { AudienceRepository } from "./audience-repository";
 import { emailLookupHmac, encryptAudienceEmail, sha256 } from "./audience-crypto";
 import { ResendEmailProvider } from "./email-provider";
+import { buildAudienceConfirmationEmail } from "./email-templates";
 import {
   getAudienceSecrets,
   getResendConfig,
@@ -43,16 +44,6 @@ async function verifyTurnstile(token: unknown, secret: string): Promise<boolean>
   if (!response.ok) return false;
   const payload: unknown = await response.json();
   return typeof payload === "object" && payload !== null && "success" in payload && payload.success === true;
-}
-
-function confirmationMessage(origin: string, token: string, purpose: AudiencePurpose) {
-  const link = `${origin}/confirmar-inscricao#token=${encodeURIComponent(token)}`;
-  const label = purpose === "store_launch" ? "a Loja da Comunidade" : "os artigos do Blog do Carro";
-  return {
-    subject: "Confirme seu e-mail no Blog do Carro",
-    text: `Confirme que deseja receber novidades sobre ${label}: ${link}`,
-    html: `<p>Confirme que deseja receber novidades sobre ${label}.</p><p><a href="${link}">Confirmar meu e-mail</a></p><p>Este link expira em 24 horas.</p>`,
-  };
 }
 
 export async function requestAudienceSubscription(
@@ -113,7 +104,8 @@ async function persistAndSend(
     now: Date.now(),
   });
   if (status !== "pending") return;
-  const message = confirmationMessage(input.origin, token, input.purpose);
+  const link = `${input.origin}/confirmar-inscricao#token=${encodeURIComponent(token)}`;
+  const message = buildAudienceConfirmationEmail(link, input.purpose);
   await new ResendEmailProvider(resend.apiKey, resend.from).sendTransactional({
     to: input.email, ...message, idempotencyKey: crypto.randomUUID(),
   });
