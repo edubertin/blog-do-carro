@@ -4,6 +4,7 @@ import { Article } from "@phosphor-icons/react/Article";
 import { ArrowSquareOut } from "@phosphor-icons/react/ArrowSquareOut";
 import { ChartLineUp } from "@phosphor-icons/react/ChartLineUp";
 import { Gauge } from "@phosphor-icons/react/Gauge";
+import { EnvelopeSimple } from "@phosphor-icons/react/EnvelopeSimple";
 import { House } from "@phosphor-icons/react/House";
 import { List } from "@phosphor-icons/react/List";
 import { Package } from "@phosphor-icons/react/Package";
@@ -42,6 +43,7 @@ const navGroups: readonly NavGroup[] = [
   ] },
   { label: "Sistema", items: [
     { label: "Conexões", href: "/admin/integracoes", icon: <PlugsConnected size={20} /> },
+    { label: "E-mails", href: "/admin/emails", icon: <EnvelopeSimple size={20} /> },
     { label: "Segurança", href: "/admin/seguranca", icon: <ShieldCheck size={20} /> },
   ] },
 ];

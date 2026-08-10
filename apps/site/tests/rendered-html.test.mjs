@@ -214,6 +214,7 @@ const htmlRoutes = [
   ["/admin", /Hoje na garagem/i],
   ["/admin/analytics", /Sinais, não vaidade/i],
   ["/admin/audiencia", /Consentimento, não lista solta/i],
+  ["/admin/emails", /A mesma marca, três mensagens claras/i],
   ["/admin/artigos", /A pauta nasce do vídeo/i],
   ["/admin/artigos/novo", /Novo artigo/i],
   ["/admin/home", /Composição da home/i],
