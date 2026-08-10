@@ -1,8 +1,12 @@
 name: Feature
-description: Proponha uma melhoria de produto.
+description: Registre uma proposta para avaliação em uma eventual retomada.
 title: "[Feature]: "
 labels: [enhancement]
 body:
+  - type: markdown
+    attributes:
+      value: >-
+        O desenvolvimento está pausado. Propostas são bem-vindas como registro, mas não há prazo de implementação ou suporte ativo.
   - type: textarea
     id: problem
     attributes:

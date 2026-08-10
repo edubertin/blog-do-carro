@@ -1,5 +1,8 @@
 # Plano de implementação — Blog do Carro
 
+> [!IMPORTANT]
+> Este plano está preservado como referência arquitetural. O desenvolvimento foi pausado em 10 de agosto de 2026; consulte [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md) para o estado vigente antes de retomar qualquer fase.
+
 ## Resultado pretendido
 
 Construir um portal automotivo brasileiro com experiência de aplicativo, prioridade absoluta para smartphones e uma base técnica capaz de receber conteúdo editorial, comunidade e comércio sem reconstrução.
